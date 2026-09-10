@@ -152,6 +152,13 @@ button svg {
   font-size: 13px;
   color: #666c76;
 }
+.github-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666c76;
+}
 .experience main {
   max-width: 1600px;
   margin: auto;
@@ -3475,6 +3482,9 @@ footer {
     font-size: 11px;
   }
   .official-link {
+    display: none;
+  }
+  .github-link span {
     display: none;
   }
 }

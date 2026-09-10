@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { NotesApp, SafariApp } from '@/components/phone-apps';
 import { DuoModel } from '@/components/duo-model';
+import { GithubLink } from '@/components/github-link.mjs';
 import { FoldGesture } from '@/lib/fold-gesture.mjs';
 import { ShowcaseMotion } from '@/lib/showcase-motion.mjs';
 import {
@@ -775,6 +776,7 @@ export default function DuoExperience({ locale }: { locale: Locale }) {
               <option value="ja">{copy.japanese}</option>
             </select>
           </label>
+          <GithubLink onClick={() => record('github_link_clicked', 'header')} />
           <a
             className="official-link"
             href={source}

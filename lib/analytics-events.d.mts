@@ -10,6 +10,7 @@ export type BehaviorEventName =
   | 'split_toggled'
   | 'auto_motion_toggled'
   | 'info_opened'
+  | 'github_link_clicked'
   | 'official_link_clicked';
 
 export function behaviorEvent(
