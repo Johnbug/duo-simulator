@@ -101,7 +101,7 @@ const poseDetails = {
   ],
   tent: [
     '立起来，换种看法。',
-    '翻到外屏，查看官方待机显示画面。切换「转动」，从不同角度细看。',
+    '翻到外屏，查看待机显示画面。切换「转动」，从不同角度细看。',
   ],
 };
 
@@ -451,7 +451,7 @@ export default function DuoExperience() {
               onClick={() => setPhoto(null)}
               aria-label="返回图库"
             >
-              <img src={photos[photo]} alt="Apple 官方 iPhone Duo 图片" />
+              <img src={photos[photo]} alt="Apple  iPhone Duo 图片" />
               <span>
                 <ChevronLeft size={16} />
                 所有照片
@@ -459,7 +459,7 @@ export default function DuoExperience() {
             </button>
           ) : (
             <>
-              <p>iPhone Duo · Apple 官方图集</p>
+              <p>iPhone Duo · Apple 图集</p>
               <div className="photo-grid">
                 {photos.map((p, i) => (
                   <button key={p} onClick={() => setPhoto(i)}>
@@ -603,7 +603,7 @@ export default function DuoExperience() {
           <div className="camera-preview">
             <img
               src="/assets/seated.jpg"
-              alt="相机体验使用的 Apple 官方产品图片"
+              alt="相机体验使用的 Apple 产品图片"
             />
             {captured && (
               <span className="capture-feedback">
@@ -719,7 +719,7 @@ export default function DuoExperience() {
           target="_blank"
           rel="noreferrer"
         >
-          Apple 官网 <ArrowUpRight size={14} />
+          Apple 网站 <ArrowUpRight size={14} />
         </a>
       </header>
       <main id="experience">
@@ -732,10 +732,10 @@ export default function DuoExperience() {
               iPhone Duo<span className="intro-divider"> / </span>
               <span className="intro-light">亲手展开。</span>
             </h1>
-            <p>探索官方三维外观，体验大屏上的更多可能。</p>
+            <p>探索三维外观，体验大屏上的更多可能。</p>
           </div>
           <span className="simulation-label">
-            <Info size={14} /> 非 Apple 官方 · 网页模拟体验
+            <Info size={14} /> 独立制作 · 网页模拟体验
           </span>
         </div>
         <div className="workbench">
@@ -752,7 +752,7 @@ export default function DuoExperience() {
               <span>
                 <i />
                 {view === 'model'
-                  ? 'Apple 官方三维模型'
+                  ? 'Apple 三维模型'
                   : closed
                     ? '外屏体验'
                     : 'App 体验'}
@@ -1065,7 +1065,7 @@ export default function DuoExperience() {
               <button
                 className="official-thumbnail"
                 onClick={() => setInfo(true)}
-                aria-label="查看 Apple 官方产品图片"
+                aria-label="查看 Apple 产品图片"
               >
                 <img
                   src={
@@ -1077,10 +1077,10 @@ export default function DuoExperience() {
                           ? '/assets/night-sky.webp'
                           : '/assets/star-white.webp'
                   }
-                  alt="Apple 官方 iPhone Duo 外观图片"
+                  alt="Apple  iPhone Duo 外观图片"
                 />
                 <span>
-                  APPLE 官方图片 <ArrowUpRight size={10} />
+                  APPLE 图片 <ArrowUpRight size={10} />
                 </span>
               </button>
               <h3>{poseDetails[pose][0]}</h3>
@@ -1108,12 +1108,12 @@ export default function DuoExperience() {
             <p>芯片 · VC 均热板散热</p>
           </div>
           <button onClick={() => setInfo(true)}>
-            了解设计与官方资料 <ArrowUpRight size={17} />
+            了解设计与资料 <ArrowUpRight size={17} />
           </button>
         </section>
         <footer>
           <span>
-            Apple 官方三维模型与开合动画 · 独立渲染与交互 · App 体验为模拟。
+            Apple 三维模型与开合动画 · 独立渲染与交互 · App 体验为模拟。
           </span>
           <a href={source} target="_blank" rel="noreferrer">
             资料来源：Apple <ArrowUpRight size={12} />
@@ -1125,11 +1125,11 @@ export default function DuoExperience() {
           <DialogTitle>iPhone Duo · 设计与资料</DialogTitle>
           <DialogDescription>
             三维模型、原始开合动画、屏幕素材及规格来自 Apple
-            官网。页面照明、夜空色材质与交互为独立实现；App 体验为模拟。
+            网站。页面照明、夜空色材质与交互为独立实现；App 体验为模拟。
           </DialogDescription>
           <Tabs defaultValue="design">
             <TabsList>
-              <TabsTrigger value="design">官方外观</TabsTrigger>
+              <TabsTrigger value="design">外观</TabsTrigger>
               <TabsTrigger value="specs">技术规格</TabsTrigger>
             </TabsList>
             <TabsContent value="design">
@@ -1140,10 +1140,10 @@ export default function DuoExperience() {
                     ? '/assets/night-sky.webp'
                     : '/assets/star-white.webp'
                 }
-                alt={`Apple 官方 iPhone Duo ${finish === 'night' ? '夜空色' : '星光白色'}产品图`}
+                alt={`Apple  iPhone Duo ${finish === 'night' ? '夜空色' : '星光白色'}产品图`}
               />
               <p className="image-credit">
-                Apple 官方产品图片 ·{' '}
+                Apple 产品图片 ·{' '}
                 {finish === 'night' ? '夜空色' : '星光白色'}
               </p>
             </TabsContent>

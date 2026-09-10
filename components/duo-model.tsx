@@ -129,7 +129,7 @@ export function DuoModel(props: Props) {
       oriented.add(root);
       mixer = new THREE.AnimationMixer(root);
       const clip = gltf.animations.find(c => c.name === 'Slider');
-      if (!clip) throw new Error('Official hinge animation unavailable');
+      if (!clip) throw new Error('Hinge animation unavailable');
       action = mixer.clipAction(clip); action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; action.play();
       const center = new THREE.Vector3();
       const bounds = new THREE.Box3();
@@ -184,6 +184,6 @@ export function DuoModel(props: Props) {
     return () => { disposed = true; cleanup(); };
   }, []);
   return <div className="model-surface" ref={host} data-model-status={status}>
-    {status !== 'ready' && <div className="model-loading"><img src="/assets/star-white.webp" alt="Apple 官方 iPhone Duo"/>{status === 'loading' ? <p><span className="model-spinner"/> 正在载入 Apple 官方三维模型</p> : <><p>当前浏览器暂时无法显示三维模型</p><button onClick={props.onFallback}>继续使用 App 体验</button></>}</div>}
+    {status !== 'ready' && <div className="model-loading"><img src="/assets/star-white.webp" alt="Apple  iPhone Duo"/>{status === 'loading' ? <p><span className="model-spinner"/> 正在载入 Apple 三维模型</p> : <><p>当前浏览器暂时无法显示三维模型</p><button onClick={props.onFallback}>继续使用 App 体验</button></>}</div>}
   </div>;
 }

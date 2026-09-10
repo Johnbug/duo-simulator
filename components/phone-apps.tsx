@@ -90,7 +90,7 @@ export function SafariApp({
             href="https://www.apple.com.cn/iphone-duo/"
             target="_blank"
             rel="noreferrer"
-            aria-label="访问 Apple 官方介绍"
+            aria-label="访问 Apple 介绍"
           >
             进一步了解 <ArrowUpRight />
           </a>
@@ -108,7 +108,7 @@ export function SafariApp({
                 ? '/assets/night-sky.webp'
                 : '/assets/star-white.webp'
             }
-            alt={`Apple 官方 iPhone Duo ${finish === 'night' ? '夜空色' : '星光白色'}产品图`}
+            alt={`Apple  iPhone Duo ${finish === 'night' ? '夜空色' : '星光白色'}产品图`}
           />
           <span className="apple-color-caption">
             <i className={finish === 'night' ? 'night-dot' : ''} />
@@ -143,7 +143,7 @@ export function SafariApp({
           href="https://www.apple.com.cn/iphone-duo/"
           target="_blank"
           rel="noreferrer"
-          aria-label="在新页面访问 Apple 官网"
+          aria-label="在新页面访问 Apple 网站"
         >
           <ArrowUpRight />
         </a>
