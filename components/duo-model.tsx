@@ -56,6 +56,21 @@ export function DuoModel(props: Props) {
       const materials = new Set<MeshPhysicalMaterial>();
       const textures = new Set<Texture>();
       const originals = new Map<MeshPhysicalMaterial, InstanceType<typeof THREE.Color>>();
+      // Fine surface relief scatters reflections without blurring display content.
+      const grain = new Uint8Array(128 * 128 * 4);
+      let seed = 73;
+      for (let i = 0; i < grain.length; i += 4) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        const value = 100 + (seed >>> 26);
+        grain[i] = grain[i + 1] = grain[i + 2] = value;
+        grain[i + 3] = 255;
+      }
+      const matteRelief = new THREE.DataTexture(grain, 128, 128);
+      matteRelief.wrapS = matteRelief.wrapT = THREE.RepeatWrapping;
+      matteRelief.repeat.set(6, 6);
+      matteRelief.magFilter = matteRelief.minFilter = THREE.LinearFilter;
+      matteRelief.needsUpdate = true;
+      textures.add(matteRelief);
       const current = { ...latest.current };
       let displayAngle = current.angle;
       let currentYaw = current.yaw;
@@ -114,6 +129,19 @@ export function DuoModel(props: Props) {
           material.envMapIntensity = 1.0;
           if (mesh.name.includes('outerDisplayScreenTexture')) screenOuter = material;
           else if (mesh.name.includes('screenTexture_geo')) screenInner = material;
+          if (material === screenInner || material === screenOuter) {
+            material.roughness = 0.86;
+            material.metalness = 0;
+            material.clearcoat = 0.18;
+            material.clearcoatRoughness = 0.8;
+            material.clearcoatMap = null;
+            material.clearcoatRoughnessMap = null;
+            material.envMapIntensity = 0.3;
+            material.bumpMap = matteRelief;
+            material.bumpScale = 0.001;
+            material.color.set(0x111319);
+            originals.set(material, material.color.clone());
+          }
         });
       });
       if (disposed) { cleanup(); return; }
