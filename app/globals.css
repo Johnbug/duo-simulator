@@ -3399,7 +3399,10 @@ footer {
   margin-inline: 8cqw;
 }
 
-/* An etched-glass finish sits above the display and never intercepts input. */
+/* Fine anti-glare texture, with no blur or uniform white veil over the pixels. */
+.app-stage .device:not(.closed-device) .display-content {
+  isolation: isolate;
+}
 .app-stage .device:not(.closed-device) .display-content::after {
   content: '';
   position: absolute;
@@ -3408,11 +3411,10 @@ footer {
   border-radius: inherit;
   pointer-events: none;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23888' opacity='.035' filter='url(%23grain)' d='M0 0h180v180H0z'/%3E%3C/svg%3E"),
-    linear-gradient(135deg, #ffffff0c 0%, #f0f4f903 45%, #c9d3e305 100%);
-  background-size: 180px 180px, 100% 100%;
-
-  box-shadow: inset 0 0 18px #f3f5fa08;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.96' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23808080' filter='url(%23grain)' d='M0 0h128v128H0z'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  opacity: 0.065;
+  mix-blend-mode: soft-light;
 }
 .app-stage .standby {
   position: relative;

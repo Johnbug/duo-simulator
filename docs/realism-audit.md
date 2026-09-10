@@ -10,3 +10,7 @@ References: https://www.apple.com.cn/iphone-duo/ and https://www.apple.com.cn/ip
 - Type checking, production build and all eight regression tests passed. Browser inspection was attempted twice but the in-app browser connection timed out before a screenshot could be obtained; visual and interaction QA could not be completed in this audit.
 
 Limits: independent Three.js lighting is not Apple's complete rendering pipeline; Apple-specific coat/specular extensions are not all supported by GLTFLoader. Night-sky model coloration remains an approximation (official reference photos are available). Interactive apps are simulations. This is an official-model-based presentation, not a calibrated physical or photometric replica of a real device.
+
+## Follow-up matte calibration
+
+The user requested another adjustment after the source-material restoration. The inner display now uses a renderer-specific clearcoat roughness of 0.68, clearcoat intensity of 0.7 and environment intensity of 0.7. Its original clearcoat coverage map remains intact; the roughness map is not used in this calibration. No bump noise, white tint, blur or emission changes are applied. The simulated app display uses a low-opacity, neutral soft-light microtexture instead of a white overlay. Outer glass remains unchanged. This calibration is a visual approximation, not an Apple-specified optical measurement.

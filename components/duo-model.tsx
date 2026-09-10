@@ -113,9 +113,16 @@ export function DuoModel(props: Props) {
           if (material.transparent) material.depthWrite = false;
           material.envMapIntensity = 1.0;
           if (mesh.name.includes('outerDisplayScreenTexture')) screenOuter = material;
-          else if (mesh.name.includes('screenTexture_geo')) screenInner = material;
-          // Preserve Apple's inner nano-texture clearcoat maps and outer glass finish.
-          // The two displays intentionally use different source materials.
+          else if (mesh.name.includes('screenTexture_geo')) {
+            screenInner = material;
+            // Calibrate the inner anti-glare layer for this independent lighting setup.
+            // Broad reflections provide the matte finish; emissive display pixels stay sharp.
+            material.clearcoatRoughnessMap = null;
+            material.clearcoatRoughness = 0.68;
+            material.clearcoat = 0.7;
+            material.envMapIntensity = 0.7;
+          }
+          // The outer display keeps the original glass material.
         });
       });
       if (disposed) { cleanup(); return; }
