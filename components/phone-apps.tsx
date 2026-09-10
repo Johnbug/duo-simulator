@@ -8,44 +8,52 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import type { Locale } from '@/lib/i18n.mjs';
+import { getTranslations } from '@/lib/translations';
 
 export function NotesApp({
+  locale,
   note,
   setNote,
   checked,
   setChecked,
   onHome,
 }: {
+  locale: Locale;
   note: string;
   setNote: (value: string) => void;
   checked: boolean[];
   setChecked: (value: boolean[]) => void;
   onHome: () => void;
 }) {
+  const copy = getTranslations(locale);
   const editor = useRef<HTMLTextAreaElement>(null);
   return (
-    <section className="ios-notes" aria-label="备忘录">
+    <section className="ios-notes" aria-label={copy.notes}>
       <header className="ios-app-nav notes-nav">
-        <button onClick={onHome} aria-label="返回主屏幕">
+        <button onClick={onHome} aria-label={copy.backHome}>
           <ChevronLeft />
-          <span>备忘录</span>
+          <span>{copy.notes}</span>
         </button>
-        <button aria-label="编辑备忘录" onClick={() => editor.current?.focus()}>
+        <button
+          aria-label={copy.editNote}
+          onClick={() => editor.current?.focus()}
+        >
           <SquarePen />
         </button>
       </header>
       <article className="note-paper">
-        <p className="note-timestamp">9月10日，星期四</p>
-        <h3>给周末留一点空白</h3>
+        <p className="note-timestamp">{copy.noteDate}</p>
+        <h3>{copy.noteTitle}</h3>
         <Textarea
           ref={editor}
           className="note-editor"
-          aria-label="编辑备忘录"
+          aria-label={copy.editNote}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        <div className="note-checklist" aria-label="周末清单">
-          {['带上相机，出发', '找一家海边咖啡馆', '留一点时间给日落'].map(
+        <div className="note-checklist" aria-label={copy.weekendList}>
+          {[copy.checklist1, copy.checklist2, copy.checklist3].map(
             (label, index) => (
               <label key={label} className={checked[index] ? 'completed' : ''}>
                 <Checkbox
@@ -64,25 +72,32 @@ export function NotesApp({
           )}
         </div>
         <div className="note-divider" />
-        <p className="note-postscript">不赶时间，慢慢来。</p>
+        <p className="note-postscript">{copy.notePostscript}</p>
       </article>
       <footer className="ios-note-footer">
-        <span>{checked.filter(Boolean).length} / 3 已完成</span>
-        <span>仅本次体验保留</span>
+        <span>
+          {checked.filter(Boolean).length} / 3 {copy.completed}
+        </span>
+        <span>{copy.sessionOnly}</span>
       </footer>
     </section>
   );
 }
 
 export function SafariApp({
+  locale,
   finish,
   onHome,
+  onOfficialLink,
 }: {
+  locale: Locale;
   finish: string;
   onHome: () => void;
+  onOfficialLink: (location: string) => void;
 }) {
+  const copy = getTranslations(locale);
   return (
-    <section className="ios-safari" aria-label="Safari 浏览器">
+    <section className="ios-safari" aria-label={copy.safariBrowser}>
       <div className="safari-document">
         <header className="apple-page-nav">
           <span>iPhone Duo</span>
@@ -90,17 +105,18 @@ export function SafariApp({
             href="https://www.apple.com.cn/iphone-duo/"
             target="_blank"
             rel="noreferrer"
-            aria-label="访问 Apple 介绍"
+            aria-label={copy.visitApple}
+            onClick={() => onOfficialLink('safari_content')}
           >
-            进一步了解 <ArrowUpRight />
+            {copy.learnMore} <ArrowUpRight />
           </a>
         </header>
         <div className="apple-page-hero">
           <p>iPhone Duo</p>
           <h3>
-            两面精彩。
+            {copy.hero1}
             <br />
-            一手展开。
+            {copy.hero2}
           </h3>
           <img
             src={
@@ -108,31 +124,31 @@ export function SafariApp({
                 ? '/assets/night-sky.webp'
                 : '/assets/star-white.webp'
             }
-            alt={`Apple  iPhone Duo ${finish === 'night' ? '夜空色' : '星光白色'}产品图`}
+            alt={`Apple iPhone Duo ${finish === 'night' ? copy.night : copy.white}`}
           />
           <span className="apple-color-caption">
             <i className={finish === 'night' ? 'night-dot' : ''} />
-            {finish === 'night' ? '夜空色' : '星光白色'} · 钛金属设计
+            {finish === 'night' ? copy.night : copy.white} · {copy.titanium}
           </span>
         </div>
         <div className="apple-page-specs">
           <div>
             <strong>
-              7.6<span> 英寸</span>
+              7.6<span>{copy.inches}</span>
             </strong>
-            <p>宽阔内屏</p>
+            <p>{copy.wideDisplay}</p>
           </div>
           <div>
             <strong>
-              5.2<span> 毫米</span>
+              5.2<span>{copy.millimeters}</span>
             </strong>
-            <p>展开厚度</p>
+            <p>{copy.openThickness}</p>
           </div>
         </div>
-        <p className="safari-source-credit">图片与资料来自 Apple</p>
+        <p className="safari-source-credit">{copy.appleSource}</p>
       </div>
       <div className="ios-browser-bar">
-        <button onClick={onHome} aria-label="返回主屏幕">
+        <button onClick={onHome} aria-label={copy.backHome}>
           <ChevronLeft />
         </button>
         <div className="ios-address">
@@ -143,7 +159,8 @@ export function SafariApp({
           href="https://www.apple.com.cn/iphone-duo/"
           target="_blank"
           rel="noreferrer"
-          aria-label="在新页面访问 Apple 网站"
+          aria-label={copy.visitNewPage}
+          onClick={() => onOfficialLink('safari_toolbar')}
         >
           <ArrowUpRight />
         </a>

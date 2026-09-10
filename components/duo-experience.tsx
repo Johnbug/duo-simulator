@@ -1,5 +1,7 @@
 'use client';
 import { flushSync } from 'react-dom';
+import { track } from '@vercel/analytics';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   useEffect,
   useRef,
@@ -42,6 +44,12 @@ import { NotesApp, SafariApp } from '@/components/phone-apps';
 import { DuoModel } from '@/components/duo-model';
 import { FoldGesture } from '@/lib/fold-gesture.mjs';
 import { ShowcaseMotion } from '@/lib/showcase-motion.mjs';
+import {
+  behaviorEvent,
+  type BehaviorEventName,
+} from '@/lib/analytics-events.mjs';
+import { localePath, type Locale } from '@/lib/i18n.mjs';
+import { getTranslations } from '@/lib/translations';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -65,20 +73,25 @@ type AppId =
   | 'phone';
 type Pose = 'open' | 'closed' | 'laptop' | 'tent';
 const apps = [
-  { id: 'photos', name: '照片', icon: ImageIcon, color: 'photos-icon' },
-  { id: 'camera', name: '相机', icon: Camera, color: 'camera-icon' },
-  { id: 'calendar', name: '日历', icon: CalendarDays, color: 'calendar-icon' },
-  { id: 'notes', name: '备忘录', icon: NotebookPen, color: 'notes-icon' },
-  { id: 'music', name: '音乐', icon: Music2, color: 'music-icon' },
-  { id: 'safari', name: 'Safari', icon: Compass, color: 'safari-icon' },
-  { id: 'mail', name: '邮件', icon: Mail, color: 'mail-icon' },
-  { id: 'settings', name: '设置', icon: Settings, color: 'settings-icon' },
+  { id: 'photos', name: 'photos', icon: ImageIcon, color: 'photos-icon' },
+  { id: 'camera', name: 'camera', icon: Camera, color: 'camera-icon' },
+  {
+    id: 'calendar',
+    name: 'calendar',
+    icon: CalendarDays,
+    color: 'calendar-icon',
+  },
+  { id: 'notes', name: 'notes', icon: NotebookPen, color: 'notes-icon' },
+  { id: 'music', name: 'music', icon: Music2, color: 'music-icon' },
+  { id: 'safari', name: null, icon: Compass, color: 'safari-icon' },
+  { id: 'mail', name: 'mail', icon: Mail, color: 'mail-icon' },
+  { id: 'settings', name: 'settings', icon: Settings, color: 'settings-icon' },
 ] as const;
 const poses = [
-  { id: 'open', name: '展开', icon: Tablet, angle: 180 },
-  { id: 'closed', name: '闭合', icon: Smartphone, angle: 0 },
-  { id: 'laptop', name: '坐立', icon: Laptop, angle: 100 },
-  { id: 'tent', name: '站立', icon: Tent, angle: 70 },
+  { id: 'open', icon: Tablet, angle: 180 },
+  { id: 'closed', icon: Smartphone, angle: 0 },
+  { id: 'laptop', icon: Laptop, angle: 100 },
+  { id: 'tent', icon: Tent, angle: 70 },
 ] as const;
 const source = 'https://www.apple.com.cn/iphone-duo/';
 const photos = [
@@ -86,26 +99,25 @@ const photos = [
   '/assets/display.webp',
   '/assets/night-sky.webp',
 ];
-const poseDetails = {
-  open: [
-    '大一点，尽兴一点。',
-    '直接拖动机身，查看真实开合。切换「操作 App」，体验主屏与分屏。',
-  ],
-  closed: [
-    '合上，也很出色。',
-    '5.4 英寸外屏，熟悉的体验装进口袋。当前 App 会延续到外屏。',
-  ],
-  laptop: [
-    '摆个角度，放开双手。',
-    '按住机身左右拖动，停在你喜欢的角度。切换「转动」可查看背面与铰链。',
-  ],
-  tent: [
-    '立起来，换种看法。',
-    '翻到外屏，查看待机显示画面。切换「转动」，从不同角度细看。',
-  ],
-};
+const poseCopy = {
+  open: ['openTitle', 'openDetail'],
+  closed: ['closedTitle', 'closedDetail'],
+  laptop: ['laptopTitle', 'laptopDetail'],
+  tent: ['tentTitle', 'tentDetail'],
+} as const;
 
-export default function DuoExperience() {
+export default function DuoExperience({ locale }: { locale: Locale }) {
+  const copy = getTranslations(locale);
+  const router = useRouter();
+  const pathname = usePathname();
+  const record = (
+    name: BehaviorEventName,
+    value: string,
+    context?: string | number | boolean,
+  ) => {
+    const event = behaviorEvent(name, locale, value, context);
+    track(event.name, event.properties);
+  };
   const [angle, setAngle] = useState(135);
   const [pose, setPose] = useState<Pose>('open');
   const [finish, setFinish] = useState('white');
@@ -130,9 +142,7 @@ export default function DuoExperience() {
   const [split, setSplit] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [info, setInfo] = useState(false);
-  const [note, setNote] = useState(
-    '去海边走走，看看落日。\n把想做的小事，一件件记下来。',
-  );
+  const [note, setNote] = useState(copy.defaultNote);
   const [checked, setChecked] = useState([false, false, false]);
   const [selectedDay, setSelectedDay] = useState(10);
   const [dialed, setDialed] = useState('');
@@ -188,6 +198,7 @@ export default function DuoExperience() {
     return () => cancelAnimationFrame(frame);
   }, [autoMotion, dragging, view, gesture, info, motionRevision]);
   function selectShowcase(mode: 'fold' | 'orbit') {
+    record('experience_mode_changed', mode);
     motionRunner.current = null;
     setMotionRevision((revision) => revision + 1);
     setGesture(mode);
@@ -203,7 +214,7 @@ export default function DuoExperience() {
   useEffect(() => {
     const update = () =>
       setNow(
-        new Date().toLocaleTimeString('zh-CN', {
+        new Date().toLocaleTimeString(locale === 'zh' ? 'zh-CN' : locale, {
           hour: '2-digit',
           minute: '2-digit',
           hour12: false,
@@ -212,7 +223,7 @@ export default function DuoExperience() {
     update();
     const t = setInterval(update, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [locale]);
   useEffect(() => {
     const context = (
       document as Document & {
@@ -228,8 +239,9 @@ export default function DuoExperience() {
     const lifecycle = new AbortController();
     const tool = {
       name: 'configure_duo_experience',
-      title: '调整 iPhone Duo 体验',
-      description: '设置可见模拟设备的折叠形态、配色和分屏状态。',
+      title: 'Configure the iPhone Duo experience',
+      description:
+        'Set the visible device fold position, finish, and split view.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -257,7 +269,13 @@ export default function DuoExperience() {
         if (value.split && value.pose !== 'open')
           throw new Error('Split view requires an open device');
         flushSync(() => {
-          choosePose(value.pose as Pose);
+          const nextPose = value.pose as Pose;
+          setAutoMotion(false);
+          setPose(nextPose);
+          setAngle(poses.find((item) => item.id === nextPose)!.angle);
+          setPortrait(false);
+          setYaw(nextPose === 'tent' ? 2.65 : -0.35);
+          setPitch(nextPose === 'laptop' ? -0.45 : -0.12);
           setFinish(value.finish as string);
           setSplit(value.split as boolean);
           setView(value.split ? 'apps' : 'model');
@@ -273,6 +291,7 @@ export default function DuoExperience() {
     return () => lifecycle.abort();
   }, []);
   function choosePose(p: Pose) {
+    record('pose_selected', p);
     setAutoMotion(false);
     setPose(p);
     setAngle(poses.find((x) => x.id === p)!.angle);
@@ -342,17 +361,24 @@ export default function DuoExperience() {
     const orbit = orbitGesture.current?.pointerId === e.pointerId;
     if (a === null && !orbit) return;
     if (orbit) orbitGesture.current = null;
+    record(
+      'model_dragged',
+      orbit ? 'orbit' : 'fold',
+      orbit ? Math.round(yaw * 100) / 100 : (a ?? angle),
+    );
     setDragging(false);
     if (e.currentTarget.hasPointerCapture(e.pointerId))
       e.currentTarget.releasePointerCapture(e.pointerId);
   }
   function enterApps() {
+    record('experience_mode_changed', 'apps');
     setView('apps');
     setAngle(180);
     setPose('open');
     setPortrait(false);
   }
   function openApp(id: AppId) {
+    record('app_opened', id);
     setApp(id);
     setPhoto(null);
     setCaptured(false);
@@ -384,19 +410,19 @@ export default function DuoExperience() {
       <div className="widgets">
         <div className="weather-widget">
           <span>
-            上海 <ArrowUpRight size={12} />
+            {copy.shanghai} <ArrowUpRight size={12} />
           </span>
           <strong>26°</strong>
           <span>
-            <Sun size={17} /> 晴
+            <Sun size={17} /> {copy.sunny}
           </span>
-          <small>最高 28°　最低 23° · 演示</small>
+          <small>{copy.weatherRange}</small>
         </div>
         <div className="date-widget">
-          <span>星期四</span>
+          <span>{copy.thursday}</span>
           <strong>10</strong>
-          <small>九月 · 2026</small>
-          <div className="event">给生活，留一点空间</div>
+          <small>{copy.september2026}</small>
+          <div className="event">{copy.calendarEvent}</div>
         </div>
       </div>
       <div className="app-grid">
@@ -405,7 +431,7 @@ export default function DuoExperience() {
             <span className={`app-icon ${a.color}`}>
               <a.icon strokeWidth={1.7} />
             </span>
-            <span>{a.name}</span>
+            <span>{a.name ? copy[a.name] : 'Safari'}</span>
           </button>
         ))}
       </div>
@@ -415,15 +441,15 @@ export default function DuoExperience() {
       </div>
       <div className="dock">
         {[
-          { id: 'phone', icon: Phone, color: 'phone-icon', name: '电话' },
+          { id: 'phone', icon: Phone, color: 'phone-icon', name: copy.phone },
           { id: 'safari', icon: Compass, color: 'safari-icon', name: 'Safari' },
           {
             id: 'messages',
             icon: MessageCircle,
             color: 'phone-icon',
-            name: '信息',
+            name: copy.messages,
           },
-          { id: 'music', icon: Music2, color: 'music-icon', name: '音乐' },
+          { id: 'music', icon: Music2, color: 'music-icon', name: copy.music },
         ].map((a) => (
           <button
             key={a.id}
@@ -443,34 +469,34 @@ export default function DuoExperience() {
       return (
         <div className="photos-app">
           <h3>
-            照片 <span>图库</span>
+            {copy.photos} <span>{copy.gallery}</span>
           </h3>
           {photo !== null ? (
             <button
               className="photo-focus"
               onClick={() => setPhoto(null)}
-              aria-label="返回图库"
+              aria-label={copy.backGallery}
             >
-              <img src={photos[photo]} alt="Apple  iPhone Duo 图片" />
+              <img src={photos[photo]} alt={copy.appleProductImage} />
               <span>
                 <ChevronLeft size={16} />
-                所有照片
+                {copy.allPhotos}
               </span>
             </button>
           ) : (
             <>
-              <p>iPhone Duo · Apple 图集</p>
+              <p>{copy.appleGallery}</p>
               <div className="photo-grid">
                 {photos.map((p, i) => (
                   <button key={p} onClick={() => setPhoto(i)}>
                     <img
                       src={p}
-                      alt={['坐立形态', '宽阔内屏', '夜空色机身'][i]}
+                      alt={[copy.seatedAlt, copy.displayAlt, copy.nightAlt][i]}
                     />
                   </button>
                 ))}
               </div>
-              <small>3 张照片 · 轻点查看</small>
+              <small>{copy.photoCount}</small>
             </>
           )}
         </div>
@@ -478,6 +504,7 @@ export default function DuoExperience() {
     if (id === 'notes')
       return (
         <NotesApp
+          locale={locale}
           note={note}
           setNote={setNote}
           checked={checked}
@@ -491,7 +518,11 @@ export default function DuoExperience() {
     if (id === 'safari')
       return (
         <SafariApp
+          locale={locale}
           finish={finish}
+          onOfficialLink={(location) =>
+            record('official_link_clicked', location)
+          }
           onHome={() => {
             openApp('home');
             setSplit(false);
@@ -510,18 +541,21 @@ export default function DuoExperience() {
             </span>
           </div>
           <div className="track">
-            <h3>给自己一点空间</h3>
-            <p>体验播放界面 · 无音频</p>
+            <h3>{copy.musicTitle}</h3>
+            <p>{copy.playbackDemo}</p>
           </div>
           <div className="music-progress">
             <i style={{ width: playing ? '48%' : '20%' }} />
           </div>
           <div className="playback">
-            <button aria-label="重置播放" onClick={() => setPlaying(false)}>
+            <button
+              aria-label={copy.resetPlayback}
+              onClick={() => setPlaying(false)}
+            >
               <ChevronLeft />
             </button>
             <button
-              aria-label={playing ? '暂停' : '播放演示'}
+              aria-label={playing ? copy.pause : copy.playDemo}
               onClick={() => setPlaying(!playing)}
             >
               {playing ? (
@@ -530,7 +564,10 @@ export default function DuoExperience() {
                 <Play fill="currentColor" />
               )}
             </button>
-            <button aria-label="重置播放" onClick={() => setPlaying(false)}>
+            <button
+              aria-label={copy.resetPlayback}
+              onClick={() => setPlaying(false)}
+            >
               <ChevronRight />
             </button>
           </div>
@@ -540,9 +577,9 @@ export default function DuoExperience() {
       return (
         <div className="calendar-app">
           <span>2026</span>
-          <h3>九月</h3>
+          <h3>{copy.september}</h3>
           <div className="calendar-grid">
-            {'一二三四五六日'.split('').map((d) => (
+            {copy.weekdays.split('').map((d) => (
               <small key={d}>{d}</small>
             ))}
             {Array.from({ length: 35 }, (_, i) => (
@@ -557,42 +594,51 @@ export default function DuoExperience() {
             ))}
           </div>
           <p className="calendar-event">
-            9月{selectedDay}日　给自己安排一个小假期
+            {locale === 'en'
+              ? `September ${selectedDay} · `
+              : locale === 'ja'
+                ? `9月${selectedDay}日　`
+                : `9月${selectedDay}日　`}
+            {copy.vacation}
           </p>
         </div>
       );
     if (id === 'settings')
       return (
         <div className="settings-app">
-          <h3>设置</h3>
+          <h3>{copy.settings}</h3>
           <div className="settings-profile">
             <span>D</span>
             <div>
-              <b>你的 iPhone Duo</b>
-              <p>网页体验设备</p>
+              <b>{copy.yourDuo}</b>
+              <p>{copy.webDevice}</p>
             </div>
           </div>
           <div className="setting-row">
-            <span>显示亮度</span>
+            <span>{copy.brightness}</span>
             <b>{brightness}%</b>
           </div>
           <Slider
-            aria-label="屏幕亮度"
+            aria-label={copy.brightness}
             value={[brightness]}
             min={40}
             max={100}
             onValueChange={(v) => setBrightness(Array.isArray(v) ? v[0] : v)}
           />
           <div className="setting-row">
-            <span>显示屏</span>
-            <span>{closed ? '5.4 英寸外屏' : '7.6 英寸内屏'}</span>
+            <span>{copy.screen}</span>
+            <span>
+              {closed
+                ? `5.4 ${copy.inches.trim()} ${copy.outerDisplay}`
+                : `7.6 ${copy.inches.trim()} ${copy.innerDisplay}`}
+            </span>
           </div>
           <div className="setting-row">
-            <span>芯片</span>
+            <span>{copy.chip}</span>
             <span>A20 Pro</span>
           </div>
           <div className="setting-row">
-            <span>系统设计参考</span>
+            <span>{copy.systemReference}</span>
             <span>iOS 27</span>
           </div>
         </div>
@@ -601,59 +647,51 @@ export default function DuoExperience() {
       return (
         <div className="camera-app">
           <div className="camera-preview">
-            <img
-              src="/assets/seated.jpg"
-              alt="相机体验使用的 Apple 产品图片"
-            />
+            <img src="/assets/seated.jpg" alt={copy.cameraAlt} />
             {captured && (
               <span className="capture-feedback">
-                <Check size={16} /> 已模拟拍摄
+                <Check size={16} /> {copy.captured}
               </span>
             )}
           </div>
-          <p>
-            照片　 <b>人像</b>　全景
-          </p>
+          <p>{copy.cameraModes}</p>
           <button
             className="shutter"
-            aria-label="模拟拍照"
+            aria-label={copy.capture}
             onClick={() => setCaptured(!captured)}
           />
-          <small>示意取景 · 未使用摄像头</small>
+          <small>{copy.cameraNote}</small>
         </div>
       );
     if (id === 'mail')
       return (
         <div className="mail-app">
-          <h3>收件箱</h3>
-          <p>演示邮件</p>
+          <h3>{copy.inbox}</h3>
+          <p>{copy.demoMail}</p>
           <article>
-            <b>今天，展开一点新意。</b>
-            <small>来自 Duo 体验室</small>
-            <p>
-              一边阅读，一边记下灵感。展开手机后，点击「分屏体验」，试试把两个
-              App 放在一起。
-            </p>
+            <b>{copy.mailTitle}</b>
+            <small>{copy.fromStudio}</small>
+            <p>{copy.mailBody}</p>
           </article>
         </div>
       );
     if (id === 'messages')
       return (
         <div className="messages-app">
-          <h3>信息</h3>
-          <p>演示对话</p>
-          <div className="bubble">周末去海边吧？</div>
-          <div className="bubble mine">好呀！我来记下行程 ☀️</div>
-          <div className="bubble">在分屏里打开备忘录，边看边写。</div>
-          <small>此为示例，无法发送信息</small>
+          <h3>{copy.messages}</h3>
+          <p>{copy.demoChat}</p>
+          <div className="bubble">{copy.message1}</div>
+          <div className="bubble mine">{copy.message2}</div>
+          <div className="bubble">{copy.message3}</div>
+          <small>{copy.demoOnly}</small>
         </div>
       );
     return (
       <div className="phone-app">
         <Phone size={40} />
-        <h3>电话</h3>
-        <p>{dialed || '在浏览器里探索界面。'}</p>
-        <small>网页体验不支持拨打电话</small>
+        <h3>{copy.phone}</h3>
+        <p>{dialed || copy.exploreBrowser}</p>
+        <small>{copy.noCalls}</small>
         <div className="dialpad">
           {'123456789*0#'.split('').map((n) => (
             <button
@@ -696,7 +734,7 @@ export default function DuoExperience() {
           openApp('home');
           setSplit(false);
         }}
-        aria-label="返回主屏幕"
+        aria-label={copy.backHome}
         tabIndex={decorative ? -1 : 0}
       />
     </div>
@@ -704,23 +742,49 @@ export default function DuoExperience() {
   return (
     <div className="experience">
       <header className="site-header">
-        <a className="wordmark" href="/">
-          duo<span>体验室</span>
+        <a className="wordmark" href={`/${locale}`}>
+          duo<span>{copy.studio}</span>
         </a>
         <nav>
           <a className="nav-active" href="#experience">
-            交互体验
+            {copy.interactive}
           </a>
-          <button onClick={() => setInfo(true)}>设计与规格</button>
+          <button
+            onClick={() => {
+              record('info_opened', 'header');
+              setInfo(true);
+            }}
+          >
+            {copy.designSpecs}
+          </button>
         </nav>
-        <a
-          className="official-link"
-          href={source}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Apple 网站 <ArrowUpRight size={14} />
-        </a>
+        <div className="header-actions">
+          <label className="locale-picker">
+            <span className="sr-only">{copy.language}</span>
+            <select
+              value={locale}
+              aria-label={copy.language}
+              onChange={(event) => {
+                const nextLocale = event.target.value as Locale;
+                record('locale_changed', nextLocale);
+                router.push(localePath(pathname, nextLocale));
+              }}
+            >
+              <option value="zh">{copy.chinese}</option>
+              <option value="en">{copy.english}</option>
+              <option value="ja">{copy.japanese}</option>
+            </select>
+          </label>
+          <a
+            className="official-link"
+            href={source}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => record('official_link_clicked', 'header')}
+          >
+            {copy.appleSite} <ArrowUpRight size={14} />
+          </a>
+        </div>
       </header>
       <main id="experience">
         <div className="intro">
@@ -730,18 +794,18 @@ export default function DuoExperience() {
             </div>
             <h1>
               iPhone Duo<span className="intro-divider"> / </span>
-              <span className="intro-light">亲手展开。</span>
+              <span className="intro-light">{copy.unfoldIt}</span>
             </h1>
-            <p>探索三维外观，体验大屏上的更多可能。</p>
+            <p>{copy.intro}</p>
           </div>
           <span className="simulation-label">
-            <Info size={14} /> 独立制作 · 网页模拟体验
+            <Info size={14} /> {copy.simulation}
           </span>
         </div>
         <div className="workbench">
           <section
             className={`stage ${view === 'model' ? 'model-stage' : 'app-stage'} ${dragging ? 'is-dragging' : ''}`}
-            aria-label="iPhone Duo 交互设备"
+            aria-label={copy.device}
             onPointerDownCapture={startDrag}
             onPointerMove={moveDrag}
             onPointerUp={endDrag}
@@ -752,10 +816,10 @@ export default function DuoExperience() {
               <span>
                 <i />
                 {view === 'model'
-                  ? 'Apple 三维模型'
+                  ? copy.model
                   : closed
-                    ? '外屏体验'
-                    : 'App 体验'}
+                    ? copy.coverExperience
+                    : copy.appExperience}
               </span>
               <span>{closed ? '5.4' : '7.6'}″ SUPER RETINA XDR</span>
             </div>
@@ -764,12 +828,15 @@ export default function DuoExperience() {
               value={view}
               onValueChange={(v) => {
                 if (v === 'apps') enterApps();
-                else setView('model');
+                else {
+                  record('experience_mode_changed', 'model');
+                  setView('model');
+                }
               }}
             >
-              <TabsList aria-label="体验模式">
-                <TabsTrigger value="model">真机外观</TabsTrigger>
-                <TabsTrigger value="apps">操作 App</TabsTrigger>
+              <TabsList aria-label={copy.experienceMode}>
+                <TabsTrigger value="model">{copy.realDevice}</TabsTrigger>
+                <TabsTrigger value="apps">{copy.useApps}</TabsTrigger>
               </TabsList>
             </Tabs>
             <div
@@ -785,17 +852,21 @@ export default function DuoExperience() {
                 pitch={pitch}
                 visible={view === 'model'}
                 onFallback={enterApps}
+                locale={locale}
               />
               <div className="model-caption" aria-hidden="true">
                 <span>
                   {dragging
-                    ? '正在' + (gesture === 'fold' ? '折叠' : '转动')
+                    ? gesture === 'fold'
+                      ? copy.draggingFold
+                      : copy.draggingOrbit
                     : autoMotion
                       ? gesture === 'fold'
-                        ? '自动缓慢开合 · 拖动可接管'
-                        : '自动旋转 · 拖动可接管'
-                      : '按住机身' +
-                        (gesture === 'fold' ? '左右拖动' : '转动查看')}
+                        ? copy.autoFold
+                        : copy.autoOrbit
+                      : gesture === 'fold'
+                        ? copy.holdFold
+                        : copy.holdOrbit}
                 </span>
                 <strong>
                   {angle}
@@ -803,8 +874,8 @@ export default function DuoExperience() {
                 </strong>
                 <i>
                   {gesture === 'fold'
-                    ? '← 合上　　展开 →'
-                    : '360° 查看机身与铰链'}
+                    ? copy.foldDirection
+                    : copy.orbitDirection}
                 </i>
               </div>
             </div>
@@ -813,7 +884,7 @@ export default function DuoExperience() {
             >
               <button
                 className="fold-grip"
-                aria-label="拖动手机边缘折叠，方向键调节角度"
+                aria-label={copy.foldGrip}
                 onKeyDown={(e) => {
                   if (
                     ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)
@@ -849,17 +920,17 @@ export default function DuoExperience() {
                     className={`standby ${clockStyle ? 'standby-alt' : ''}`}
                     onClick={() => setClockStyle(!clockStyle)}
                   >
-                    <span>星期四 · 9月10日</span>
+                    <span>{copy.standbyDate}</span>
                     <strong>{now}</strong>
                     <span>
-                      <Sun size={22} /> 上海 26° · 天气演示
+                      <Sun size={22} /> {copy.standbyWeather}
                     </span>
-                    <small>轻点切换时钟</small>
+                    <small>{copy.tapClock}</small>
                   </button>
                 ) : folding ? (
                   <div
                     className="folding-panels"
-                    aria-label={`开合角度 ${angle} 度`}
+                    aria-label={`${copy.foldAngle} ${angle}°`}
                   >
                     <div className="fold-left" inert>
                       <div>{content(true)}</div>
@@ -881,7 +952,7 @@ export default function DuoExperience() {
                   aria-pressed={gesture === 'orbit'}
                 >
                   <RotateCcw size={16} />
-                  旋转
+                  {copy.rotate}
                 </button>
                 <button
                   className={gesture === 'fold' ? 'active' : ''}
@@ -889,7 +960,7 @@ export default function DuoExperience() {
                   aria-pressed={gesture === 'fold'}
                 >
                   <MoveHorizontal size={16} />
-                  折叠
+                  {copy.fold}
                 </button>
                 <span />
                 <button
@@ -899,7 +970,7 @@ export default function DuoExperience() {
                     setPitch(-0.12);
                   }}
                 >
-                  正面
+                  {copy.front}
                 </button>
                 <button
                   onClick={() => {
@@ -908,17 +979,23 @@ export default function DuoExperience() {
                     setPitch(-0.12);
                   }}
                 >
-                  背面
+                  {copy.back}
                 </button>
                 <button
-                  onClick={() => setAutoMotion((running) => !running)}
-                  aria-label={autoMotion ? '暂停自动展示' : '继续自动展示'}
+                  onClick={() => {
+                    record(
+                      'auto_motion_toggled',
+                      autoMotion ? 'paused' : 'playing',
+                    );
+                    setAutoMotion((running) => !running);
+                  }}
+                  aria-label={autoMotion ? copy.pauseAuto : copy.resumeAuto}
                   aria-pressed={autoMotion}
                 >
                   {autoMotion ? <Pause size={15} /> : <Play size={15} />}
-                  {autoMotion ? '暂停' : '播放'}
+                  {autoMotion ? copy.pause : copy.play}
                 </button>
-                <button onClick={reset} aria-label="重置体验">
+                <button onClick={reset} aria-label={copy.resetExperience}>
                   <RotateCcw size={15} />
                 </button>
               </div>
@@ -929,59 +1006,64 @@ export default function DuoExperience() {
                     openApp('home');
                     setSplit(false);
                   }}
-                  aria-label="返回主屏幕"
+                  aria-label={copy.backHome}
                 >
                   <HomeIcon size={17} />
-                  <small>主屏</small>
+                  <small>{copy.home}</small>
                 </button>
                 <span />
                 <button
                   className={portrait ? 'selected' : ''}
                   disabled={!closed && angle < 175}
                   onClick={() => setPortrait(!portrait)}
-                  aria-label="旋转屏幕"
+                  aria-label={copy.rotateScreen}
                 >
                   <RotateCcw size={17} />
-                  <small>旋转</small>
+                  <small>{copy.rotate}</small>
                 </button>
                 <button
                   className={split ? 'selected' : ''}
                   disabled={angle < 175}
                   onClick={() => {
+                    record('split_toggled', split ? 'off' : 'on');
                     setSplit(!split);
                     setPortrait(false);
                   }}
-                  aria-label="切换分屏体验"
+                  aria-label={copy.splitExperience}
                 >
                   <PanelsTopLeft size={18} />
-                  <small>分屏</small>
+                  <small>{copy.split}</small>
                 </button>
                 <span />
                 <button
-                  onClick={() => setAutoMotion((running) => !running)}
-                  aria-label={autoMotion ? '暂停自动展示' : '继续自动展示'}
+                  onClick={() => {
+                    record(
+                      'auto_motion_toggled',
+                      autoMotion ? 'paused' : 'playing',
+                    );
+                    setAutoMotion((running) => !running);
+                  }}
+                  aria-label={autoMotion ? copy.pauseAuto : copy.resumeAuto}
                   aria-pressed={autoMotion}
                 >
                   {autoMotion ? <Pause size={15} /> : <Play size={15} />}
-                  {autoMotion ? '暂停' : '播放'}
+                  {autoMotion ? copy.pause : copy.play}
                 </button>
-                <button onClick={reset} aria-label="重置体验">
+                <button onClick={reset} aria-label={copy.resetExperience}>
                   <RotateCcw size={16} />
-                  <small>重置</small>
+                  <small>{copy.reset}</small>
                 </button>
               </div>
             )}
             <div className="stage-caption">
               <MoveHorizontal size={14} />
-              {view === 'model'
-                ? '鼠标或单指拖动 · 松手停留当前角度 · 也可使用右侧滑块'
-                : '轻点 App 操作 · 拖动右侧握柄折叠手机'}
+              {view === 'model' ? copy.modelHint : copy.appHint}
             </div>
           </section>
           <aside className="controls">
             <section>
               <div className="control-heading">
-                <h2>折叠形态</h2>
+                <h2>{copy.foldPoses}</h2>
               </div>
               <div className="pose-grid">
                 {poses.map((p) => (
@@ -992,12 +1074,12 @@ export default function DuoExperience() {
                     aria-pressed={pose === p.id}
                   >
                     <p.icon strokeWidth={1.5} />
-                    <span>{p.name}</span>
+                    <span>{copy[p.id]}</span>
                   </button>
                 ))}
               </div>
               <div className="angle-heading">
-                <label id="angle-label">开合角度</label>
+                <label id="angle-label">{copy.foldAngle}</label>
                 <output>{angle}°</output>
               </div>
               <Slider
@@ -1011,61 +1093,72 @@ export default function DuoExperience() {
                 }}
               />
               <div className="range-labels">
-                <span>闭合 0°</span>
-                <span>展开 180°</span>
+                <span>{copy.closed0}</span>
+                <span>{copy.open180}</span>
               </div>
             </section>
             <section>
               <div className="control-heading">
-                <h2>机身配色</h2>
+                <h2>{copy.bodyColor}</h2>
               </div>
               <div className="finish-picker">
                 <button
-                  aria-label="夜空色"
+                  aria-label={copy.night}
                   aria-pressed={finish === 'night'}
                   className={`swatch night ${finish === 'night' ? 'active' : ''}`}
-                  onClick={() => setFinish('night')}
+                  onClick={() => {
+                    record('finish_selected', 'night');
+                    setFinish('night');
+                  }}
                 >
                   {finish === 'night' && <Check size={17} />}
                 </button>
                 <button
-                  aria-label="星光白色"
+                  aria-label={copy.white}
                   aria-pressed={finish === 'white'}
                   className={`swatch white ${finish === 'white' ? 'active' : ''}`}
-                  onClick={() => setFinish('white')}
+                  onClick={() => {
+                    record('finish_selected', 'white');
+                    setFinish('white');
+                  }}
                 >
                   {finish === 'white' && <Check size={17} />}
                 </button>
                 <span>
-                  {finish === 'night' ? '夜空色' : '星光白色'}
-                  <small>钛金属设计</small>
+                  {finish === 'night' ? copy.night : copy.white}
+                  <small>{copy.titanium}</small>
                 </span>
               </div>
             </section>
             <section className="scenario">
               <div className="control-heading">
-                <h2>应用体验</h2>
+                <h2>{copy.appsHeading}</h2>
               </div>
               <button
                 className={split ? 'split-button is-active' : 'split-button'}
                 onClick={() => {
                   enterApps();
+                  record('split_toggled', split ? 'off' : 'on');
                   setSplit(!split);
                 }}
               >
                 <PanelsTopLeft size={20} />
                 <span>
-                  浏览与记录<small>Safari ＋ 备忘录</small>
+                  {copy.browseRecord}
+                  <small>{copy.safariNotes}</small>
                 </span>
                 <ArrowUpRight size={18} />
               </button>
-              <p>一边寻找灵感，一边随手记录。</p>
+              <p>{copy.scenarioHint}</p>
             </section>
             <div className="context-card">
               <button
                 className="official-thumbnail"
-                onClick={() => setInfo(true)}
-                aria-label="查看 Apple 产品图片"
+                onClick={() => {
+                  record('info_opened', 'image');
+                  setInfo(true);
+                }}
+                aria-label={copy.viewAppleImage}
               >
                 <img
                   src={
@@ -1077,14 +1170,14 @@ export default function DuoExperience() {
                           ? '/assets/night-sky.webp'
                           : '/assets/star-white.webp'
                   }
-                  alt="Apple  iPhone Duo 外观图片"
+                  alt={copy.appleProductImage}
                 />
                 <span>
-                  APPLE 图片 <ArrowUpRight size={10} />
+                  {copy.appleImage} <ArrowUpRight size={10} />
                 </span>
               </button>
-              <h3>{poseDetails[pose][0]}</h3>
-              <p>{poseDetails[pose][1]}</p>
+              <h3>{copy[poseCopy[pose][0]]}</h3>
+              <p>{copy[poseCopy[pose][1]]}</p>
             </div>
           </aside>
         </div>
@@ -1092,45 +1185,55 @@ export default function DuoExperience() {
           <div>
             <b>
               {closed ? '5.4' : '7.6'}
-              <span> 英寸</span>
+              <span>{copy.inches}</span>
             </b>
-            <p>{closed ? '外屏' : '内屏'} · 超视网膜 XDR</p>
+            <p>
+              {closed ? copy.outerDisplay : copy.innerDisplay}
+              {copy.displaySuffix}
+            </p>
           </div>
           <div>
             <b>
               {closed ? '11.3' : '5.2'}
-              <span> 毫米</span>
+              <span>{copy.millimeters}</span>
             </b>
-            <p>{closed ? '闭合' : '展开'}机身厚度</p>
+            <p>
+              {closed ? copy.closed : copy.open} {copy.thickness}
+            </p>
           </div>
           <div>
             <b>A20 Pro</b>
-            <p>芯片 · VC 均热板散热</p>
+            <p>{copy.chipCooling}</p>
           </div>
-          <button onClick={() => setInfo(true)}>
-            了解设计与资料 <ArrowUpRight size={17} />
+          <button
+            onClick={() => {
+              record('info_opened', 'details');
+              setInfo(true);
+            }}
+          >
+            {copy.learnDesign} <ArrowUpRight size={17} />
           </button>
         </section>
         <footer>
-          <span>
-            Apple 三维模型与开合动画 · 独立渲染与交互 · App 体验为模拟。
-          </span>
-          <a href={source} target="_blank" rel="noreferrer">
-            资料来源：Apple <ArrowUpRight size={12} />
+          <span>{copy.footerNote}</span>
+          <a
+            href={source}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => record('official_link_clicked', 'footer')}
+          >
+            {copy.source} <ArrowUpRight size={12} />
           </a>
         </footer>
       </main>
       <Dialog open={info} onOpenChange={setInfo}>
         <DialogContent className="spec-dialog">
-          <DialogTitle>iPhone Duo · 设计与资料</DialogTitle>
-          <DialogDescription>
-            三维模型、原始开合动画、屏幕素材及规格来自 Apple
-            网站。页面照明、夜空色材质与交互为独立实现；App 体验为模拟。
-          </DialogDescription>
+          <DialogTitle>{copy.dialogTitle}</DialogTitle>
+          <DialogDescription>{copy.dialogDescription}</DialogDescription>
           <Tabs defaultValue="design">
             <TabsList>
-              <TabsTrigger value="design">外观</TabsTrigger>
-              <TabsTrigger value="specs">技术规格</TabsTrigger>
+              <TabsTrigger value="design">{copy.appearance}</TabsTrigger>
+              <TabsTrigger value="specs">{copy.technicalSpecs}</TabsTrigger>
             </TabsList>
             <TabsContent value="design">
               <img
@@ -1140,25 +1243,31 @@ export default function DuoExperience() {
                     ? '/assets/night-sky.webp'
                     : '/assets/star-white.webp'
                 }
-                alt={`Apple  iPhone Duo ${finish === 'night' ? '夜空色' : '星光白色'}产品图`}
+                alt={`Apple iPhone Duo ${finish === 'night' ? copy.night : copy.white}`}
               />
               <p className="image-credit">
-                Apple 产品图片 ·{' '}
-                {finish === 'night' ? '夜空色' : '星光白色'}
+                {copy.appleProductImage} ·{' '}
+                {finish === 'night' ? copy.night : copy.white}
               </p>
             </TabsContent>
             <TabsContent value="specs">
               <dl className="spec-list">
                 {[
-                  ['内屏', '7.6 英寸 · 2670 × 1878'],
-                  ['外屏', '5.4 英寸 · 1398 × 2034'],
-                  ['屏幕表层', '内屏纳米纹理减眩光 · 外屏玻璃'],
-                  ['展开尺寸', '164.6 × 117.8 × 5.2 毫米'],
-                  ['闭合尺寸', '84.1 × 117.8 × 11.3 毫米'],
-                  ['重量', '254 克'],
-                  ['材质', '5 级钛金属边框与铰链护壳'],
-                  ['芯片', 'A20 Pro'],
-                  ['配色', '夜空色 / 星光白色'],
+                  [copy.innerSpec, `7.6${copy.inches} · 2670 × 1878`],
+                  [copy.outerSpec, `5.4${copy.inches} · 1398 × 2034`],
+                  [copy.surface, copy.surfaceValue],
+                  [
+                    copy.openSize,
+                    `164.6 × 117.8 × 5.2 ${copy.millimeters.trim()}`,
+                  ],
+                  [
+                    copy.closedSize,
+                    `84.1 × 117.8 × 11.3 ${copy.millimeters.trim()}`,
+                  ],
+                  [copy.weight, copy.grams254],
+                  [copy.material, copy.materialValue],
+                  [copy.chip, 'A20 Pro'],
+                  [copy.colors, copy.colorValue],
                 ].map(([k, v]) => (
                   <div key={k}>
                     <dt>{k}</dt>
@@ -1169,15 +1278,21 @@ export default function DuoExperience() {
             </TabsContent>
           </Tabs>
           <div className="source-links">
-            <a href={source} target="_blank" rel="noreferrer">
-              产品介绍 <ArrowUpRight size={14} />
+            <a
+              href={source}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => record('official_link_clicked', 'dialog_product')}
+            >
+              {copy.productIntro} <ArrowUpRight size={14} />
             </a>
             <a
               href="https://www.apple.com.cn/iphone-duo/specs/"
               target="_blank"
               rel="noreferrer"
+              onClick={() => record('official_link_clicked', 'dialog_specs')}
             >
-              技术规格 <ArrowUpRight size={14} />
+              {copy.technicalSpecs} <ArrowUpRight size={14} />
             </a>
           </div>
         </DialogContent>
