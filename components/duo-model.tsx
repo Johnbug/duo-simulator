@@ -31,7 +31,7 @@ export function DuoModel(props: Props) {
       renderer.setClearColor(0x000000, 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.1;
+      renderer.toneMappingExposure = 1;
       element.appendChild(renderer.domElement);
       renderer.domElement.setAttribute('aria-hidden', 'true');
       const scene = new THREE.Scene();
@@ -56,21 +56,6 @@ export function DuoModel(props: Props) {
       const materials = new Set<MeshPhysicalMaterial>();
       const textures = new Set<Texture>();
       const originals = new Map<MeshPhysicalMaterial, InstanceType<typeof THREE.Color>>();
-      // Fine surface relief scatters reflections without blurring display content.
-      const grain = new Uint8Array(128 * 128 * 4);
-      let seed = 73;
-      for (let i = 0; i < grain.length; i += 4) {
-        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-        const value = 100 + (seed >>> 26);
-        grain[i] = grain[i + 1] = grain[i + 2] = value;
-        grain[i + 3] = 255;
-      }
-      const matteRelief = new THREE.DataTexture(grain, 128, 128);
-      matteRelief.wrapS = matteRelief.wrapT = THREE.RepeatWrapping;
-      matteRelief.repeat.set(6, 6);
-      matteRelief.magFilter = matteRelief.minFilter = THREE.LinearFilter;
-      matteRelief.needsUpdate = true;
-      textures.add(matteRelief);
       const current = { ...latest.current };
       let displayAngle = current.angle;
       let currentYaw = current.yaw;
@@ -129,19 +114,8 @@ export function DuoModel(props: Props) {
           material.envMapIntensity = 1.0;
           if (mesh.name.includes('outerDisplayScreenTexture')) screenOuter = material;
           else if (mesh.name.includes('screenTexture_geo')) screenInner = material;
-          if (material === screenInner || material === screenOuter) {
-            material.roughness = 0.86;
-            material.metalness = 0;
-            material.clearcoat = 0.18;
-            material.clearcoatRoughness = 0.8;
-            material.clearcoatMap = null;
-            material.clearcoatRoughnessMap = null;
-            material.envMapIntensity = 0.3;
-            material.bumpMap = matteRelief;
-            material.bumpScale = 0.001;
-            material.color.set(0x111319);
-            originals.set(material, material.color.clone());
-          }
+          // Preserve Apple's inner nano-texture clearcoat maps and outer glass finish.
+          // The two displays intentionally use different source materials.
         });
       });
       if (disposed) { cleanup(); return; }
@@ -175,11 +149,11 @@ export function DuoModel(props: Props) {
         }
         if (screenInner) {
           screenInner.emissiveMap = screenTextures[current.portrait ? 'portrait' : current.pose === 'laptop' ? 'laptop' : 'landscape'];
-          screenInner.emissive.set(0xffffff); screenInner.emissiveIntensity = 0.85; screenInner.toneMapped = false;
+          screenInner.emissive.set(0xffffff); screenInner.emissiveIntensity = 1; screenInner.toneMapped = false;
         }
         if (screenOuter) {
           screenOuter.emissiveMap = screenTextures[current.pose === 'tent' ? 'tent' : 'closed'];
-          screenOuter.emissive.set(0xffffff); screenOuter.emissiveIntensity = 0.85; screenOuter.toneMapped = false;
+          screenOuter.emissive.set(0xffffff); screenOuter.emissiveIntensity = 1; screenOuter.toneMapped = false;
         }
         const z = current.portrait ? -Math.PI / 2 : (current.pose === 'tent' || current.pose === 'laptop') ? Math.PI / 2 : 0;
         presentation.rotation.set(currentPitch, currentYaw, z);

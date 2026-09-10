@@ -30,6 +30,11 @@ test('official hinge actually deforms the mesh from closed to half-open to flat'
  assert.ok(open.x>closed.x*1.8,'Open width must be nearly twice the closed width');
  assert.ok(half.y>closed.y*4,'Hinge must leave the screen plane at half fold');
  assert.ok(open.y<closed.y,'Open device must be thinner than closed device');
+ // Source units are centimetres; the full bounds also include side buttons and cameras.
+ const within=(actual,expected)=>Math.abs(actual/expected-1)<0.02;
+ assert.ok(within(open.x,16.46),'Unfolded width must agree with Apple 164.6 mm specification');
+ assert.ok(within(open.z,11.78),'Body height must agree with Apple 117.8 mm specification');
+ assert.ok(within(closed.x,8.41),'Closed width must agree with Apple 84.1 mm specification');
  // Reversing the same clip must return the exact closed geometry, without looping.
  assert.ok(measure(0).distanceTo(closed)<0.00001);
 });
