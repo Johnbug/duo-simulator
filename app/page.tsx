@@ -41,6 +41,7 @@ import {
 import { NotesApp, SafariApp } from '@/components/phone-apps';
 import { DuoModel } from '@/components/duo-model';
 import { FoldGesture } from '@/lib/fold-gesture.mjs';
+import { ShowcaseMotion } from '@/lib/showcase-motion.mjs';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -111,7 +112,11 @@ export default function DuoExperience() {
   const [app, setApp] = useState<AppId>('home');
   const [view, setView] = useState<'model' | 'apps'>('model');
   const [dragging, setDragging] = useState(false);
-  const [gesture, setGesture] = useState<'fold' | 'orbit'>('fold');
+  const [gesture, setGesture] = useState<'fold' | 'orbit'>('orbit');
+  const [autoMotion, setAutoMotion] = useState(true);
+  const motionState = useRef({ angle, yaw: -0.35 });
+  const motionRunner = useRef<ShowcaseMotion | null>(null);
+  const [motionRevision, setMotionRevision] = useState(0);
   const [yaw, setYaw] = useState(-0.35);
   const [pitch, setPitch] = useState(-0.12);
   const foldGesture = useRef(new FoldGesture());
@@ -137,6 +142,64 @@ export default function DuoExperience() {
   const [clockStyle, setClockStyle] = useState(false);
   const [now, setNow] = useState('9:41');
   const [captured, setCaptured] = useState(false);
+  motionState.current = { angle, yaw };
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => {
+      if (preference.matches) setAutoMotion(false);
+    };
+    update();
+    preference.addEventListener('change', update);
+    return () => preference.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    if (!autoMotion || dragging || view !== 'model' || info) return;
+    const saved = motionRunner.current;
+    const state = motionState.current;
+    const motion =
+      saved &&
+      saved.mode === gesture &&
+      Math.round(saved.angle) === state.angle &&
+      Math.abs(saved.yaw - state.yaw) < 1e-8
+        ? saved
+        : new ShowcaseMotion(gesture, state.angle, state.yaw);
+    motionRunner.current = motion;
+    let frame = 0;
+    let previous = 0;
+    let accumulated = 0;
+    const animate = (time: number) => {
+      if (document.hidden) {
+        previous = 0;
+        accumulated = 0;
+      } else {
+        if (previous) accumulated += Math.min((time - previous) / 1000, 0.1);
+        previous = time;
+        // Feed targets at 30 Hz; the existing model renderer interpolates each frame.
+        if (accumulated >= 1 / 30) {
+          const next = motion.step(accumulated);
+          accumulated = 0;
+          if (gesture === 'orbit') setYaw(next.yaw);
+          else setAngle(Math.round(next.angle));
+        }
+      }
+      frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [autoMotion, dragging, view, gesture, info, motionRevision]);
+  function selectShowcase(mode: 'fold' | 'orbit') {
+    motionRunner.current = null;
+    setMotionRevision((revision) => revision + 1);
+    setGesture(mode);
+    setAutoMotion(true);
+    if (mode === 'fold') {
+      setPose('open');
+      setPortrait(false);
+      setYaw(-0.35);
+      setPitch(-0.12);
+    }
+  }
+
   useEffect(() => {
     const update = () =>
       setNow(
@@ -210,6 +273,7 @@ export default function DuoExperience() {
     return () => lifecycle.abort();
   }, []);
   function choosePose(p: Pose) {
+    setAutoMotion(false);
     setPose(p);
     setAngle(poses.find((x) => x.id === p)!.angle);
     setPortrait(false);
@@ -221,6 +285,7 @@ export default function DuoExperience() {
     setPitch(p === 'laptop' ? -0.45 : -0.12);
   }
   function applyAngle(a: number) {
+    setAutoMotion(false);
     setAngle(a);
     setPose(a === 0 ? 'closed' : 'open');
     setPortrait(false);
@@ -252,6 +317,7 @@ export default function DuoExperience() {
         return;
       setView('model');
     }
+    setAutoMotion(false);
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     setDragging(true);
@@ -292,7 +358,11 @@ export default function DuoExperience() {
     setCaptured(false);
   }
   function reset() {
-    setAngle(180);
+    motionRunner.current = null;
+    setMotionRevision((revision) => revision + 1);
+    setGesture('orbit');
+    setAutoMotion(true);
+    setAngle(135);
     setPose('open');
     setFinish('white');
     setView('model');
@@ -720,14 +790,22 @@ export default function DuoExperience() {
                 <span>
                   {dragging
                     ? '正在' + (gesture === 'fold' ? '折叠' : '转动')
-                    : '按住机身' +
-                      (gesture === 'fold' ? '左右拖动' : '转动查看')}
+                    : autoMotion
+                      ? gesture === 'fold'
+                        ? '自动缓慢开合 · 拖动可接管'
+                        : '自动旋转 · 拖动可接管'
+                      : '按住机身' +
+                        (gesture === 'fold' ? '左右拖动' : '转动查看')}
                 </span>
                 <strong>
                   {angle}
                   <small>°</small>
                 </strong>
-                <i>← 合上　　展开 →</i>
+                <i>
+                  {gesture === 'fold'
+                    ? '← 合上　　展开 →'
+                    : '360° 查看机身与铰链'}
+                </i>
               </div>
             </div>
             <div
@@ -798,24 +876,25 @@ export default function DuoExperience() {
             {view === 'model' ? (
               <div className="model-toolbar">
                 <button
+                  className={gesture === 'orbit' ? 'active' : ''}
+                  onClick={() => selectShowcase('orbit')}
+                  aria-pressed={gesture === 'orbit'}
+                >
+                  <RotateCcw size={16} />
+                  旋转
+                </button>
+                <button
                   className={gesture === 'fold' ? 'active' : ''}
-                  onClick={() => setGesture('fold')}
+                  onClick={() => selectShowcase('fold')}
                   aria-pressed={gesture === 'fold'}
                 >
                   <MoveHorizontal size={16} />
                   折叠
                 </button>
-                <button
-                  className={gesture === 'orbit' ? 'active' : ''}
-                  onClick={() => setGesture('orbit')}
-                  aria-pressed={gesture === 'orbit'}
-                >
-                  <RotateCcw size={16} />
-                  转动
-                </button>
                 <span />
                 <button
                   onClick={() => {
+                    setAutoMotion(false);
                     setYaw(-0.35);
                     setPitch(-0.12);
                   }}
@@ -824,11 +903,20 @@ export default function DuoExperience() {
                 </button>
                 <button
                   onClick={() => {
+                    setAutoMotion(false);
                     setYaw(Math.PI - 0.35);
                     setPitch(-0.12);
                   }}
                 >
                   背面
+                </button>
+                <button
+                  onClick={() => setAutoMotion((running) => !running)}
+                  aria-label={autoMotion ? '暂停自动展示' : '继续自动展示'}
+                  aria-pressed={autoMotion}
+                >
+                  {autoMotion ? <Pause size={15} /> : <Play size={15} />}
+                  {autoMotion ? '暂停' : '播放'}
                 </button>
                 <button onClick={reset} aria-label="重置体验">
                   <RotateCcw size={15} />
@@ -869,6 +957,14 @@ export default function DuoExperience() {
                   <small>分屏</small>
                 </button>
                 <span />
+                <button
+                  onClick={() => setAutoMotion((running) => !running)}
+                  aria-label={autoMotion ? '暂停自动展示' : '继续自动展示'}
+                  aria-pressed={autoMotion}
+                >
+                  {autoMotion ? <Pause size={15} /> : <Play size={15} />}
+                  {autoMotion ? '暂停' : '播放'}
+                </button>
                 <button onClick={reset} aria-label="重置体验">
                   <RotateCcw size={16} />
                   <small>重置</small>

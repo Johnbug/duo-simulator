@@ -3420,3 +3420,16 @@ footer {
   position: relative;
   overflow: hidden;
 }
+
+.model-toolbar {
+  max-width: calc(100% - 24px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+@media (max-width: 380px) {
+  .model-toolbar button {
+    padding-inline: 6px;
+    min-width: 28px;
+    gap: 4px;
+  }
+}
