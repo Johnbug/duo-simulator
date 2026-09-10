@@ -1,0 +1,32 @@
+[
+  {
+    "file": "/tmp/duo-official-assets/night-sky.webp",
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/design/design_hero_static__dq90dw3yqa4i_large.webp",
+    "use": "夜空色三姿态产品总览"
+  },
+  {
+    "file": "/tmp/duo-official-assets/star-white.webp",
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/design/design_hero__gczn1e74mwa6_large.webp",
+    "use": "星光白色三姿态产品总览"
+  },
+  {
+    "file": "/tmp/duo-official-assets/landscape.webp",
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/product-viewer/landscape__f7x2oe1oxemy_large.webp",
+    "use": "横屏展开内屏"
+  },
+  {
+    "file": "/tmp/duo-official-assets/seated.jpg",
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/v/iphone-duo/a/images/overview/product-viewer/laptop__c7kl6vmsqd6q_large.jpg",
+    "use": "坐立模式"
+  },
+  {
+    "file": "/tmp/duo-official-assets/standing.webp",
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/product-viewer/tent__68ysumotbs2m_large.webp",
+    "use": "站立模式"
+  }
+]
