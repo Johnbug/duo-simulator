@@ -1,4 +1,5 @@
 'use client';
+import { orientDuoModel } from '@/lib/model-orientation.mjs';
 import { useEffect, useRef, useState } from 'react';
 import type { Group, Mesh, MeshPhysicalMaterial, Texture, WebGLRenderer } from 'three';
 
@@ -47,7 +48,7 @@ export function DuoModel(props: Props) {
       const presentation = new THREE.Group();
       const centered = new THREE.Group();
       const oriented = new THREE.Group();
-      oriented.rotation.set(Math.PI / 2, Math.PI, 0);
+      orientDuoModel(oriented);
       centered.add(oriented); presentation.add(centered); scene.add(presentation);
       let root: Group | undefined;
       let mixer: InstanceType<typeof THREE.AnimationMixer> | undefined;

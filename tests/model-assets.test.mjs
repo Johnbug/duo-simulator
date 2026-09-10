@@ -33,3 +33,29 @@ test('official hinge actually deforms the mesh from closed to half-open to flat'
  // Reversing the same clip must return the exact closed geometry, without looping.
  assert.ok(measure(0).distanceTo(closed)<0.00001);
 });
+
+test('inner and outer screen image corners appear upright and unmirrored',async()=>{
+ const { Group }=await import('three');
+ const { orientDuoModel }=await import('../lib/model-orientation.mjs');
+ globalThis.ProgressEvent=class{constructor(type,data){Object.assign(this,data)}};
+ const geometry=structuredClone(source);
+ geometry.buffers.forEach(b=>b.uri='data:application/octet-stream;base64,'+fs.readFileSync(new URL(b.uri,directory)).toString('base64'));
+ geometry.materials=geometry.materials.map(m=>({name:m.name}));geometry.images=[];geometry.textures=[];geometry.extensionsUsed=[];
+ const {scene,animations}=await new GLTFLoader().parseAsync(JSON.stringify(geometry),'');
+ const oriented=new Group();orientDuoModel(oriented);oriented.add(scene);
+ const mixer=new AnimationMixer(scene);const clip=animations.find(a=>a.name==='Slider');
+ const action=mixer.clipAction(clip).setLoop(LoopOnce,1);action.clampWhenFinished=true;
+ for(const [time,name] of [[0,'skeleton_0_7_outerDisplayScreenTexture_geo'],[clip.duration-0.000001,'skeleton_0_3_screenTexture_geo']]){
+  action.reset().play();mixer.setTime(time);oriented.updateMatrixWorld(true);
+  const mesh=scene.getObjectByName(name),uv=mesh.geometry.attributes.uv;
+  const corner=(u,v)=>{
+   let index=0,distance=Infinity;
+   for(let i=0;i<uv.count;i++){const d=(uv.getX(i)-u)**2+(uv.getY(i)-v)**2;if(d<distance){distance=d;index=i}}
+   return mesh.getVertexPosition(index,new Vector3()).applyMatrix4(mesh.matrixWorld);
+  };
+  // With glTF's flipY=false texture mapping, image top-left is UV (0,0).
+  const topLeft=corner(0,0),topRight=corner(1,0),bottomLeft=corner(0,1);
+  assert.ok(topLeft.y>bottomLeft.y,`${name}: image top must be above its bottom`);
+  assert.ok(topLeft.x<topRight.x,`${name}: image left must be left of its right`);
+ }
+});
