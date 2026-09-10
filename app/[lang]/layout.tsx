@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/next';
 import { notFound } from 'next/navigation';
 import { hasLocale, locales, type Locale } from '@/lib/i18n.mjs';
+import { VibeCafeTelemetry } from '@/components/vibecafe-telemetry.mjs';
 import '../globals.css';
 
 const metadataByLocale: Record<Locale, Metadata> = {
@@ -41,6 +42,9 @@ export default async function RootLayout({
   if (!hasLocale(lang)) notFound();
   return (
     <html lang={lang === 'zh' ? 'zh-CN' : lang}>
+      <head>
+        <VibeCafeTelemetry />
+      </head>
       <body>
         {children}
         <Analytics />
