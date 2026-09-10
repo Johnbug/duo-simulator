@@ -1,7 +1,9 @@
 'use client';
 import { flushSync } from 'react-dom';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { ArrowUpRight, BatteryFull, Wifi, Signal, RotateCcw, Smartphone, Tablet, Laptop, Tent, Home as HomeIcon, PanelsTopLeft, Image as ImageIcon, Camera, Music2, CalendarDays, Settings, Compass, NotebookPen, Mail, MessageCircle, Phone, Play, Pause, ChevronLeft, ChevronRight, Check, Sun, Info, MoveHorizontal } from 'lucide-react';
+import { DuoModel } from '@/components/duo-model';
+import { FoldGesture } from '@/lib/fold-gesture.mjs';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -17,11 +19,16 @@ const apps=[
 const poses=[{id:'open',name:'展开',icon:Tablet,angle:180},{id:'closed',name:'闭合',icon:Smartphone,angle:0},{id:'laptop',name:'坐立',icon:Laptop,angle:100},{id:'tent',name:'站立',icon:Tent,angle:70}] as const;
 const source='https://www.apple.com.cn/iphone-duo/';
 const photos=['/assets/seated.jpg','/assets/display.webp','/assets/night-sky.webp'];
-const poseDetails={open:['大一点，尽兴一点。','展开 7.6 英寸内屏，轻点屏幕里的 App，或试试并排处理两件事。'],closed:['合上，也很出色。','5.4 英寸外屏，熟悉的体验装进口袋。当前 App 会延续到外屏。'],laptop:['摆个角度，放开双手。','拖动滑块调整开合角度，探索坐立形态。回到完全展开即可操作 App。'],tent:['立起来，换种看法。','外屏化身桌面时钟。这里模拟待机显示，轻点时钟可切换显示样式。']};
+const poseDetails={open:['大一点，尽兴一点。','直接拖动机身，查看真实开合。切换「操作 App」，体验主屏与分屏。'],closed:['合上，也很出色。','5.4 英寸外屏，熟悉的体验装进口袋。当前 App 会延续到外屏。'],laptop:['摆个角度，放开双手。','按住机身左右拖动，停在你喜欢的角度。切换「转动」可查看背面与铰链。'],tent:['立起来，换种看法。','翻到外屏，查看官方待机显示画面。切换「转动」，从不同角度细看。']};
 
 export default function DuoExperience(){
- const [angle,setAngle]=useState(180); const [pose,setPose]=useState<Pose>('open');
- const [finish,setFinish]=useState('night'); const [app,setApp]=useState<AppId>('home');
+ const [angle,setAngle]=useState(135); const [pose,setPose]=useState<Pose>('open');
+ const [finish,setFinish]=useState('white'); const [app,setApp]=useState<AppId>('home');
+ const [view,setView]=useState<'model'|'apps'>('model');
+ const [dragging,setDragging]=useState(false);const [gesture,setGesture]=useState<'fold'|'orbit'>('fold');
+ const [yaw,setYaw]=useState(-0.35);const [pitch,setPitch]=useState(-0.12);
+ const foldGesture=useRef(new FoldGesture());
+ const orbitGesture=useRef<{pointerId:number;x:number;y:number;yaw:number;pitch:number}|null>(null);
  const [split,setSplit]=useState(false); const [portrait,setPortrait]=useState(false);
  const [info,setInfo]=useState(false); const [note,setNote]=useState('周末，去看看更大的世界。\n\n☐ 带上相机\n☐ 找一家海边咖啡馆\n☐ 留一点时间给日落');
  const [selectedDay,setSelectedDay]=useState(10); const [dialed,setDialed]=useState('');
@@ -38,15 +45,40 @@ export default function DuoExperience(){
  const value=input as Record<string,unknown>;
  if(!poses.some(p=>p.id===value.pose)||!['night','white'].includes(String(value.finish))||typeof value.split!=='boolean'||Object.keys(value).some(k=>!['pose','finish','split'].includes(k)))throw new Error('Invalid configuration');
  if(value.split&&value.pose!=='open')throw new Error('Split view requires an open device');
- flushSync(()=>{choosePose(value.pose as Pose);setFinish(value.finish as string);setSplit(value.split as boolean)});
+ flushSync(()=>{choosePose(value.pose as Pose);setFinish(value.finish as string);setSplit(value.split as boolean);setView(value.split?'apps':'model')});
  return {pose:value.pose,finish:value.finish,split:value.split};
  }};
  try{Promise.resolve(context.registerTool(tool,{signal:lifecycle.signal})).catch(()=>{});}catch{}
  return()=>lifecycle.abort();
  },[]);
- function choosePose(p:Pose){setPose(p);setAngle(poses.find(x=>x.id===p)!.angle);setPortrait(false);if(p!=='open')setSplit(false)}
+ function choosePose(p:Pose){setPose(p);setAngle(poses.find(x=>x.id===p)!.angle);setPortrait(false);if(p!=='open'){setSplit(false);setView('model')}setYaw(p==='tent'?2.65:-0.35);setPitch(p==='laptop'?-0.45:-0.12)}
+ function applyAngle(a:number){setAngle(a);setPose(a===0?'closed':'open');setPortrait(false);if(a<175)setSplit(false)}
+ function startDrag(e:ReactPointerEvent<HTMLElement>){
+   const target=e.target as HTMLElement;
+   if(e.button!==0||target.closest('button:not(.fold-grip),a,[role=tab]'))return;
+   if(!target.closest('.model-surface canvas,.fold-grip'))return;
+   if(foldGesture.current.session||orbitGesture.current)return;
+   const width=e.currentTarget.querySelector('.model-surface')?.clientWidth||e.currentTarget.clientWidth;
+   if(gesture==='orbit'&&view==='model'&&!target.closest('.fold-grip'))orbitGesture.current={pointerId:e.pointerId,x:e.clientX,y:e.clientY,yaw,pitch};
+   else {if(!foldGesture.current.begin(e.pointerId,e.clientX,angle,width))return;setView('model');}
+   e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);setDragging(true);
+ }
+ function moveDrag(e:ReactPointerEvent<HTMLElement>){
+   const orbit=orbitGesture.current;
+   if(orbit?.pointerId===e.pointerId){setYaw(orbit.yaw+(e.clientX-orbit.x)*0.008);setPitch(Math.max(-1.2,Math.min(1.2,orbit.pitch+(e.clientY-orbit.y)*0.008)));return}
+   const a=foldGesture.current.move(e.pointerId,e.clientX);if(a!==null)applyAngle(a);
+ }
+ function endDrag(e:ReactPointerEvent<HTMLElement>){
+   const a=foldGesture.current.end(e.pointerId);
+   const orbit=orbitGesture.current?.pointerId===e.pointerId;
+   if(a===null&&!orbit)return;
+   if(orbit)orbitGesture.current=null;
+   setDragging(false);
+   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+ }
+ function enterApps(){setView('apps');setAngle(180);setPose('open');setPortrait(false)}
  function openApp(id:AppId){setApp(id);setPhoto(null);setCaptured(false)}
- function reset(){setAngle(180);setPose('open');setFinish('night');setApp('home');setSplit(false);setPortrait(false);setBrightness(100);setPhoto(null);setPlaying(false);setDialed('');setSelectedDay(10)}
+ function reset(){setAngle(180);setPose('open');setFinish('white');setView('model');setYaw(-0.35);setPitch(-0.12);setApp('home');setSplit(false);setPortrait(false);setBrightness(100);setPhoto(null);setPlaying(false);setDialed('');setSelectedDay(10)}
  const closed=angle<15;const folding=angle>=15&&angle<175&&pose!=='tent';
  const home=()=> <div className="home-screen">
    <div className="widgets"><div className="weather-widget"><span>上海 <ArrowUpRight size={12}/></span><strong>26°</strong><span><Sun size={17}/> 晴</span><small>最高 28°　最低 23° · 演示</small></div><div className="date-widget"><span>星期四</span><strong>10</strong><small>九月 · 2026</small><div className="event">给生活，留一点空间</div></div></div>
@@ -74,22 +106,28 @@ export default function DuoExperience(){
  </div>;
  return <div className="experience">
    <header className="site-header"><a className="wordmark" href="/">duo<span>体验室</span></a><nav><a className="nav-active" href="#experience">交互体验</a><button onClick={()=>setInfo(true)}>设计与规格</button></nav><a className="official-link" href={source} target="_blank" rel="noreferrer">Apple 官网 <ArrowUpRight size={14}/></a></header>
-   <main id="experience"><div className="intro"><div><div className="eyebrow"><span/> IPHONE DUO · INTERACTIVE EXPERIENCE</div><h1>展开，另一种可能。</h1><p>亲手折叠，轻点探索。让大屏的想象，发生在眼前。</p></div><span className="simulation-label"><Info size={14}/> 非 Apple 官方 · 网页模拟体验</span></div>
-   <div className="workbench"><section className="stage" aria-label="iPhone Duo 交互设备"><div className="stage-top"><span><i/>{closed?'外屏体验':pose==='tent'?'待机显示':'内屏体验'}</span><span>{closed?'5.4': '7.6'}″ SUPER RETINA XDR</span></div>
-     <div className={`device-space ${portrait?'portrait-space':''}`}><div className={`device ${finish==='white'?'white-device':''} ${closed?'closed-device':''} ${portrait?'portrait-device':''} ${pose==='tent'?'tent-device':''} ${folding?'folding-device':''}`} style={{'--fold':`${180-angle}deg`} as CSSProperties}>
+   <main id="experience"><div className="intro"><div><div className="eyebrow"><span/> IPHONE DUO · INTERACTIVE EXPERIENCE</div><h1>展开，另一种可能。</h1><p>按住手机，左右拖动开合。真实模型，每个角度都看得见。</p></div><span className="simulation-label"><Info size={14}/> 非 Apple 官方 · 网页模拟体验</span></div>
+   <div className="workbench"><section className={`stage ${view==='model'?'model-stage':'app-stage'} ${dragging?'is-dragging':''}`} aria-label="iPhone Duo 交互设备" onPointerDownCapture={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={endDrag}><div className="stage-top"><span><i/>{view==='model'?'Apple 官方三维模型':closed?'外屏体验':'App 体验'}</span><span>{closed?'5.4': '7.6'}″ SUPER RETINA XDR</span></div>
+     <Tabs className="experience-mode" value={view} onValueChange={v=>{if(v==='apps')enterApps();else setView('model')}}><TabsList aria-label="体验模式"><TabsTrigger value="model">真机外观</TabsTrigger><TabsTrigger value="apps">操作 App</TabsTrigger></TabsList></Tabs>
+     <div className={`model-container ${view!=='model'?'is-hidden':''}`}>
+       <DuoModel angle={angle} finish={finish} pose={pose} portrait={portrait} dragging={dragging} yaw={yaw} pitch={pitch} visible={view==='model'} onFallback={enterApps}/>
+       <div className="model-caption" aria-hidden="true"><span>{dragging?'正在'+(gesture==='fold'?'折叠':'转动'):'按住机身'+(gesture==='fold'?'左右拖动':'转动查看')}</span><strong>{angle}<small>°</small></strong><i>← 合上　　展开 →</i></div>
+     </div>
+     <div className={`device-space ${portrait?'portrait-space':''} ${view!=='apps'?'is-hidden':''}`}>
+       <button className="fold-grip" aria-label="拖动手机边缘折叠，方向键调节角度" onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();setView('model');applyAngle(e.key==='Home'?0:e.key==='End'?180:Math.max(0,Math.min(180,angle+(e.key==='ArrowRight'?5:-5))))}}}><span/><span/><span/></button><div className={`device ${finish==='white'?'white-device':''} ${closed?'closed-device':''} ${portrait?'portrait-device':''} ${pose==='tent'?'tent-device':''} ${folding?'folding-device':''}`} style={{'--fold':`${180-angle}deg`} as CSSProperties}>
        {pose==='tent'?<button className={`standby ${clockStyle?'standby-alt':''}`} onClick={()=>setClockStyle(!clockStyle)}><span>星期四 · 9月10日</span><strong>{now}</strong><span><Sun size={22}/> 上海 26° · 天气演示</span><small>轻点切换时钟</small></button>:folding?<div className="folding-panels" aria-label={`开合角度 ${angle} 度`}><div className="fold-left" inert><div>{content(true)}</div></div><div className="fold-right" inert><div>{content(true)}</div></div></div>:content()}
      </div></div>
-     <div className="device-toolbar"><button onClick={()=>{openApp('home');setSplit(false)}} aria-label="返回主屏幕"><HomeIcon size={17}/></button><span/><button className={portrait?'selected':''} disabled={!closed&&angle<175} onClick={()=>setPortrait(!portrait)} aria-label="旋转屏幕"><RotateCcw size={17}/></button><button className={split?'selected':''} disabled={angle<175} onClick={()=>{setSplit(!split);setPortrait(false)}} aria-label="切换分屏体验"><PanelsTopLeft size={18}/></button><span/><button onClick={reset} aria-label="重置体验"><RotateCcw size={16}/><small>重置</small></button></div>
-     <div className="stage-caption"><MoveHorizontal size={14}/>{folding?'拖动右侧滑块，感受开合变化':'轻点屏幕里的 App，开始探索'}</div>
+     {view==='model'?<div className="model-toolbar"><button className={gesture==='fold'?'active':''} onClick={()=>setGesture('fold')} aria-pressed={gesture==='fold'}><MoveHorizontal size={16}/>折叠</button><button className={gesture==='orbit'?'active':''} onClick={()=>setGesture('orbit')} aria-pressed={gesture==='orbit'}><RotateCcw size={16}/>转动</button><span/><button onClick={()=>{setYaw(-0.35);setPitch(-0.12)}}>正面</button><button onClick={()=>{setYaw(Math.PI-0.35);setPitch(-0.12)}}>背面</button><button onClick={reset} aria-label="重置体验"><RotateCcw size={15}/></button></div>:<div className="device-toolbar"><button onClick={()=>{openApp('home');setSplit(false)}} aria-label="返回主屏幕"><HomeIcon size={17}/></button><span/><button className={portrait?'selected':''} disabled={!closed&&angle<175} onClick={()=>setPortrait(!portrait)} aria-label="旋转屏幕"><RotateCcw size={17}/></button><button className={split?'selected':''} disabled={angle<175} onClick={()=>{setSplit(!split);setPortrait(false)}} aria-label="切换分屏体验"><PanelsTopLeft size={18}/></button><span/><button onClick={reset} aria-label="重置体验"><RotateCcw size={16}/><small>重置</small></button></div>}
+     <div className="stage-caption"><MoveHorizontal size={14}/>{view==='model'?'鼠标或单指拖动 · 松手停留当前角度 · 也可使用右侧滑块':'轻点 App 操作 · 拖动右侧握柄折叠手机'}</div>
    </section>
-   <aside className="controls"><section><div className="control-heading"><span className="step">01</span><h2>选择形态</h2></div><div className="pose-grid">{poses.map(p=><button key={p.id} className={pose===p.id?'active':''} onClick={()=>choosePose(p.id)} aria-pressed={pose===p.id}><p.icon strokeWidth={1.5}/><span>{p.name}</span></button>)}</div><div className="angle-heading"><label id="angle-label">开合角度</label><output>{angle}°</output></div><Slider aria-labelledby="angle-label" value={[angle]} min={0} max={180} onValueChange={v=>{const a=Array.isArray(v)?v[0]:v;setAngle(a);setPose(a<15?'closed':a>=175?'open':'laptop');setPortrait(false);if(a<175)setSplit(false)}}/><div className="range-labels"><span>闭合 0°</span><span>展开 180°</span></div></section>
+   <aside className="controls"><section><div className="control-heading"><span className="step">01</span><h2>选择形态</h2></div><div className="pose-grid">{poses.map(p=><button key={p.id} className={pose===p.id?'active':''} onClick={()=>choosePose(p.id)} aria-pressed={pose===p.id}><p.icon strokeWidth={1.5}/><span>{p.name}</span></button>)}</div><div className="angle-heading"><label id="angle-label">开合角度</label><output>{angle}°</output></div><Slider aria-labelledby="angle-label" value={[angle]} min={0} max={180} onValueChange={v=>{setView('model');applyAngle(Array.isArray(v)?v[0]:v)}}/><div className="range-labels"><span>闭合 0°</span><span>展开 180°</span></div></section>
    <section><div className="control-heading"><span className="step">02</span><h2>选个喜欢的颜色</h2></div><div className="finish-picker"><button aria-label="夜空色" aria-pressed={finish==='night'} className={`swatch night ${finish==='night'?'active':''}`} onClick={()=>setFinish('night')}>{finish==='night'&&<Check size={17}/>}</button><button aria-label="星光白色" aria-pressed={finish==='white'} className={`swatch white ${finish==='white'?'active':''}`} onClick={()=>setFinish('white')}>{finish==='white'&&<Check size={17}/>}</button><span>{finish==='night'?'夜空色':'星光白色'}<small>钛金属设计</small></span></div></section>
-   <section className="scenario"><div className="control-heading"><span className="step">03</span><h2>探索大屏体验</h2></div><button className={split?'split-button is-active':'split-button'} onClick={()=>{choosePose('open');setSplit(!split)}}><PanelsTopLeft size={20}/><span>分屏体验<small>Safari + 备忘录</small></span><ArrowUpRight size={18}/></button><p>一边寻找灵感，一边随手记录。</p></section>
+   <section className="scenario"><div className="control-heading"><span className="step">03</span><h2>探索大屏体验</h2></div><button className={split?'split-button is-active':'split-button'} onClick={()=>{enterApps();setSplit(!split)}}><PanelsTopLeft size={20}/><span>分屏体验<small>Safari + 备忘录</small></span><ArrowUpRight size={18}/></button><p>一边寻找灵感，一边随手记录。</p></section>
    <div className="context-card"><button className="official-thumbnail" onClick={()=>setInfo(true)} aria-label="查看 Apple 官方产品图片"><img src={pose==='laptop'?'/assets/seated.jpg':pose==='tent'?'/assets/standing.webp':finish==='night'?'/assets/night-sky.webp':'/assets/star-white.webp'} alt="Apple 官方 iPhone Duo 外观图片"/><span>APPLE 官方图片 <ArrowUpRight size={10}/></span></button><span className="context-mark">{String(poses.findIndex(p=>p.id===pose)+1).padStart(2,'0')} / 04</span><h3>{poseDetails[pose][0]}</h3><p>{poseDetails[pose][1]}</p></div>
    </aside></div>
    <section className="details-strip"><div><b>{closed?'5.4':'7.6'}<span> 英寸</span></b><p>{closed?'外屏':'内屏'} · 超视网膜 XDR</p></div><div><b>{closed?'11.3':'5.2'}<span> 毫米</span></b><p>{closed?'闭合':'展开'}机身厚度</p></div><div><b>A20 Pro</b><p>芯片 · VC 均热板散热</p></div><button onClick={()=>setInfo(true)}>了解设计与官方资料 <ArrowUpRight size={17}/></button></section>
-   <footer><span>基于 Apple 官方图片与产品资料制作。App 内容与折叠动画为交互示意。</span><a href={source} target="_blank" rel="noreferrer">资料来源：Apple <ArrowUpRight size={12}/></a></footer>
+   <footer><span>Apple 官方三维模型与开合动画 · 独立渲染与交互 · App 体验为模拟。</span><a href={source} target="_blank" rel="noreferrer">资料来源：Apple <ArrowUpRight size={12}/></a></footer>
    </main>
-   <Dialog open={info} onOpenChange={setInfo}><DialogContent className="spec-dialog"><DialogTitle>iPhone Duo · 设计与资料</DialogTitle><DialogDescription>图片及规格来自 Apple。此体验由独立开发者制作，模拟界面与实际设备可能不同。</DialogDescription><Tabs defaultValue="design"><TabsList><TabsTrigger value="design">官方外观</TabsTrigger><TabsTrigger value="specs">技术规格</TabsTrigger></TabsList><TabsContent value="design"><img className="official-product" src={finish==='night'?'/assets/night-sky.webp':'/assets/star-white.webp'} alt={`Apple 官方 iPhone Duo ${finish==='night'?'夜空色':'星光白色'}产品图`}/><p className="image-credit">Apple 官方产品图片 · {finish==='night'?'夜空色':'星光白色'}</p></TabsContent><TabsContent value="specs"><dl className="spec-list">{[['内屏','7.6 英寸 · 2670 × 1878'],['外屏','5.4 英寸 · 1398 × 2034'],['展开尺寸','164.6 × 117.8 × 5.2 毫米'],['闭合尺寸','84.1 × 117.8 × 11.3 毫米'],['重量','254 克'],['材质','5 级钛金属边框与铰链护壳'],['芯片','A20 Pro'],['配色','夜空色 / 星光白色']].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></TabsContent></Tabs><div className="source-links"><a href={source} target="_blank" rel="noreferrer">产品介绍 <ArrowUpRight size={14}/></a><a href="https://www.apple.com.cn/iphone-duo/specs/" target="_blank" rel="noreferrer">技术规格 <ArrowUpRight size={14}/></a></div></DialogContent></Dialog>
+   <Dialog open={info} onOpenChange={setInfo}><DialogContent className="spec-dialog"><DialogTitle>iPhone Duo · 设计与资料</DialogTitle><DialogDescription>三维模型、原始开合动画、屏幕素材及规格来自 Apple 官网。页面照明、夜空色材质与交互为独立实现；App 体验为模拟。</DialogDescription><Tabs defaultValue="design"><TabsList><TabsTrigger value="design">官方外观</TabsTrigger><TabsTrigger value="specs">技术规格</TabsTrigger></TabsList><TabsContent value="design"><img className="official-product" src={finish==='night'?'/assets/night-sky.webp':'/assets/star-white.webp'} alt={`Apple 官方 iPhone Duo ${finish==='night'?'夜空色':'星光白色'}产品图`}/><p className="image-credit">Apple 官方产品图片 · {finish==='night'?'夜空色':'星光白色'}</p></TabsContent><TabsContent value="specs"><dl className="spec-list">{[['内屏','7.6 英寸 · 2670 × 1878'],['外屏','5.4 英寸 · 1398 × 2034'],['展开尺寸','164.6 × 117.8 × 5.2 毫米'],['闭合尺寸','84.1 × 117.8 × 11.3 毫米'],['重量','254 克'],['材质','5 级钛金属边框与铰链护壳'],['芯片','A20 Pro'],['配色','夜空色 / 星光白色']].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></TabsContent></Tabs><div className="source-links"><a href={source} target="_blank" rel="noreferrer">产品介绍 <ArrowUpRight size={14}/></a><a href="https://www.apple.com.cn/iphone-duo/specs/" target="_blank" rel="noreferrer">技术规格 <ArrowUpRight size={14}/></a></div></DialogContent></Dialog>
  </div>;
 }

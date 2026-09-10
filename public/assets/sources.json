@@ -1,32 +1,74 @@
 [
   {
-    "file": "/tmp/duo-official-assets/night-sky.webp",
+    "file": "night-sky.webp",
     "source_page": "https://www.apple.com.cn/iphone-duo/",
     "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/design/design_hero_static__dq90dw3yqa4i_large.webp",
     "use": "夜空色三姿态产品总览"
   },
   {
-    "file": "/tmp/duo-official-assets/star-white.webp",
+    "file": "star-white.webp",
     "source_page": "https://www.apple.com.cn/iphone-duo/",
     "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/design/design_hero__gczn1e74mwa6_large.webp",
     "use": "星光白色三姿态产品总览"
   },
   {
-    "file": "/tmp/duo-official-assets/landscape.webp",
+    "file": "landscape.webp",
     "source_page": "https://www.apple.com.cn/iphone-duo/",
     "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/product-viewer/landscape__f7x2oe1oxemy_large.webp",
     "use": "横屏展开内屏"
   },
   {
-    "file": "/tmp/duo-official-assets/seated.jpg",
+    "file": "seated.jpg",
     "source_page": "https://www.apple.com.cn/iphone-duo/",
     "image_url": "https://www.apple.com.cn/v/iphone-duo/a/images/overview/product-viewer/laptop__c7kl6vmsqd6q_large.jpg",
     "use": "坐立模式"
   },
   {
-    "file": "/tmp/duo-official-assets/standing.webp",
+    "file": "standing.webp",
     "source_page": "https://www.apple.com.cn/iphone-duo/",
     "image_url": "https://www.apple.com.cn/iphone-duo/images/overview/product-viewer/tent__68ysumotbs2m_large.webp",
     "use": "站立模式"
+  },
+  {
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "model_url": "https://www.apple.com.cn/v/iphone-duo/a/static/uploads/FUTzWlfMznEZMGX/MszYeqEKDgnBqxc/gVFBvbhWgzeMQqC/megyEIopJyvbcOt/kifhkaVQkSALvmb/vroIlOhiWPzmavg.gltf",
+    "copyright": "Apple Inc.",
+    "note": "Official model and textures; independent lighting and interaction."
+  },
+  {
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/v/iphone-duo/a/static/uploads/FUTzWlfMznEZMGX/MszYeqEKDgnBqxc/gVFBvbhWgzeMQqC/CPsrYKEncFxmcrI/kifhkaVQkSALvmb/iFSuhcVrhLhMisa.avif",
+    "file": "model/iFSuhcVrhLhMisa.avif",
+    "use": "Apple 官方三维展示屏幕贴图"
+  },
+  {
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/v/iphone-duo/a/static/uploads/FUTzWlfMznEZMGX/MszYeqEKDgnBqxc/gVFBvbhWgzeMQqC/CPsrYKEncFxmcrI/kifhkaVQkSALvmb/QcYncVIkzdbhIbJ.avif",
+    "file": "model/QcYncVIkzdbhIbJ.avif",
+    "use": "Apple 官方三维展示屏幕贴图"
+  },
+  {
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/v/iphone-duo/a/static/uploads/FUTzWlfMznEZMGX/MszYeqEKDgnBqxc/gVFBvbhWgzeMQqC/CPsrYKEncFxmcrI/kifhkaVQkSALvmb/vHeRSOZUeAIaYwi.avif",
+    "file": "model/vHeRSOZUeAIaYwi.avif",
+    "use": "Apple 官方三维展示屏幕贴图"
+  },
+  {
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/v/iphone-duo/a/static/uploads/FUTzWlfMznEZMGX/MszYeqEKDgnBqxc/gVFBvbhWgzeMQqC/CPsrYKEncFxmcrI/kifhkaVQkSALvmb/KwwxLhAVqcKFMjD.avif",
+    "file": "model/KwwxLhAVqcKFMjD.avif",
+    "use": "Apple 官方三维展示屏幕贴图"
+  },
+  {
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/v/iphone-duo/a/static/uploads/FUTzWlfMznEZMGX/MszYeqEKDgnBqxc/gVFBvbhWgzeMQqC/CPsrYKEncFxmcrI/kifhkaVQkSALvmb/qAIPDzqFGVVDXZp.avif",
+    "file": "model/qAIPDzqFGVVDXZp.avif",
+    "use": "Apple 官方三维展示屏幕贴图"
+  },
+  {
+    "source_page": "https://www.apple.com.cn/iphone-duo/",
+    "image_url": "https://www.apple.com.cn/v/iphone-duo/a/static/uploads/FUTzWlfMznEZMGX/MszYeqEKDgnBqxc/gVFBvbhWgzeMQqC/CPsrYKEncFxmcrI/kifhkaVQkSALvmb/vppMdQgnBOxPNJD.avif",
+    "file": "model/vppMdQgnBOxPNJD.avif",
+    "use": "Apple 官方三维展示屏幕贴图"
   }
 ]
